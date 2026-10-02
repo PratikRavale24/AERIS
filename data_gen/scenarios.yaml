@@ -1,0 +1,99 @@
+# Scenarios for synthetic data generation
+# These define different degradation patterns for demo purposes
+
+scenarios:
+  - name: slow_wear
+    description: "Gradual HPT erosion leading to moderate RUL"
+    failure_mode: HPT_EROSION
+    component_type: ENGINE
+    degradation_rate: 0.003  # per cycle
+    onset_cycle_range: [30, 60]
+    noise_std: 0.02
+    affected_sensors:
+      - sensor: egt_c
+        direction: increase
+        magnitude: 0.5  # degrees per cycle after onset
+      - sensor: fuel_flow_kg_h
+        direction: increase
+        magnitude: 0.1
+
+  - name: rapid_bearing_wear
+    description: "Fast bearing spall leading to low RUL, high risk"
+    failure_mode: BEARING_WEAR
+    component_type: ENGINE
+    degradation_rate: 0.012  # per cycle, fast
+    onset_cycle_range: [80, 120]
+    noise_std: 0.03
+    affected_sensors:
+      - sensor: vibration_mm_s
+        direction: increase
+        magnitude: 0.15
+      - sensor: oil_temp_c
+        direction: increase
+        magnitude: 0.3
+
+  - name: sensor_drift
+    description: "Faulty sensor causing data-quality issue, not a real failure"
+    failure_mode: null  # Not a real failure
+    component_type: ENGINE
+    degradation_rate: 0.0
+    onset_cycle_range: [50, 80]
+    noise_std: 0.05
+    sensor_fault:
+      sensor: vibration_mm_s
+      drift_rate: 0.08  # Gradual drift
+      flatline_after: 130  # Sensor flatlines after this cycle
+
+  - name: seal_leak
+    description: "Hydraulic pump seal degradation"
+    failure_mode: SEAL_LEAK
+    component_type: HYDRAULIC_PUMP
+    degradation_rate: 0.005
+    onset_cycle_range: [40, 80]
+    noise_std: 0.02
+    affected_sensors:
+      - sensor: outlet_pressure_kpa
+        direction: decrease
+        magnitude: 0.8
+      - sensor: flow_l_min
+        direction: decrease
+        magnitude: 0.3
+
+  - name: cavitation
+    description: "Hydraulic pump cavitation"
+    failure_mode: CAVITATION
+    component_type: HYDRAULIC_PUMP
+    degradation_rate: 0.008
+    onset_cycle_range: [60, 100]
+    noise_std: 0.03
+    affected_sensors:
+      - sensor: vibration_mm_s
+        direction: increase
+        magnitude: 0.12
+      - sensor: case_temp_c
+        direction: increase
+        magnitude: 0.4
+
+# Fleet composition targets for the demo dashboard
+fleet_targets:
+  total_aircraft: 25
+  approximate_available: 16
+  approximate_high_risk: 5
+  approximate_maintenance_due: 7
+  approximate_critical_spare_shortages: 2
+
+# Hero aircraft for reference demo
+hero:
+  aircraft_id: "A-017"
+  component_id: "A-017-ENG-02"
+  failure_mode: BEARING_WEAR
+  target_risk: 0.82
+  target_rul: 18
+  required_part: "PN-4007"
+  part_stock: 2
+  part_lead_time_days: 5
+  part_criticality: HIGH
+  facility_id: "FAC-01"
+  facility_capability: ENGINE
+  facility_bays: 3
+  facility_turnaround_days: 4.5

@@ -1,0 +1,169 @@
+version: "3.9"
+
+services:
+  nginx:
+    image: nginxinc/nginx-unprivileged:1.25.4-alpine
+    container_name: aeris-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTPS_PORT:-8443}:8443"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro
+    networks:
+      - edge
+      - internal
+    depends_on:
+      backend:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=10M
+      - /var/cache/nginx:size=50M
+      - /var/run:size=1M
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "--spider", "-q", "https://localhost:8443/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aeris-backend
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      - APP_NAME=${APP_NAME:-AERIS}
+      - APP_ENV=${APP_ENV:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - POSTGRES_DB=${POSTGRES_DB:-aeris}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - BACKEND_HOST=${BACKEND_HOST:-0.0.0.0}
+      - BACKEND_PORT=${BACKEND_PORT:-8000}
+      - BACKEND_WORKERS=${BACKEND_WORKERS:-2}
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-10}
+      - JWT_REFRESH_TOKEN_EXPIRE_HOURS=${JWT_REFRESH_TOKEN_EXPIRE_HOURS:-8}
+      - SESSION_IDLE_TIMEOUT_MINUTES=${SESSION_IDLE_TIMEOUT_MINUTES:-15}
+      - SESSION_ABSOLUTE_TIMEOUT_HOURS=${SESSION_ABSOLUTE_TIMEOUT_HOURS:-8}
+    volumes:
+      - ./data/synthetic:/app/data/synthetic:ro
+      - ml_artifacts:/app/ml_artifacts
+    secrets:
+      - db_password
+      - db_migrator_password
+      - jwt_signing_key
+      - aes_encryption_key
+      - ed25519_private_key
+      - ed25519_public_key
+      - model_hmac_key
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=500M
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  postgres:
+    image: postgres:16.2-alpine
+    container_name: aeris-postgres
+    restart: unless-stopped
+    expose:
+      - "5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-aeris}
+      - POSTGRES_USER=aeris_admin
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_admin_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    secrets:
+      - db_admin_password
+      - db_password
+      - db_migrator_password
+    networks:
+      - internal
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /run/postgresql:size=10M
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - FOWNER
+      - DAC_READ_SEARCH
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aeris_admin -d ${POSTGRES_DB:-aeris}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+secrets:
+  db_admin_password:
+    file: ./secrets/db_admin_password
+  db_password:
+    file: ./secrets/db_password
+  db_migrator_password:
+    file: ./secrets/db_migrator_password
+  jwt_signing_key:
+    file: ./secrets/jwt_signing_key
+  aes_encryption_key:
+    file: ./secrets/aes_encryption_key
+  ed25519_private_key:
+    file: ./secrets/ed25519_private_key
+  ed25519_public_key:
+    file: ./secrets/ed25519_public_key
+  model_hmac_key:
+    file: ./secrets/model_hmac_key
+
+volumes:
+  pgdata:
+  ml_artifacts:
+
+networks:
+  edge:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: true

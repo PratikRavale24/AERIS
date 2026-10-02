@@ -1,0 +1,60 @@
+# Secrets & credentials
+secrets/
+*.pem
+*.key
+*.crt
+*.p12
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Node
+node_modules/
+frontend/dist/
+frontend/build/
+.vite/
+
+# Generated data
+data/synthetic/
+*.parquet
+ml_artifacts/
+
+# Docker
+docker-compose.override.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Reports (generated)
+docs/SECURITY_SCAN_REPORT.md
+docs/sbom.json
