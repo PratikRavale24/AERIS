@@ -33,6 +33,7 @@ WORKDIR /app
 COPY alembic/ alembic/
 COPY alembic.ini .
 COPY app/ app/
+COPY tests/ tests/
 
 # Create necessary directories
 RUN mkdir -p /app/ml_artifacts && chown -R aeris:aeris /app

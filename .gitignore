@@ -58,3 +58,7 @@ logs/
 # Reports (generated)
 docs/SECURITY_SCAN_REPORT.md
 docs/sbom.json
+
+# Deploy
+.vercel/
+deploy/certs/

@@ -28,8 +28,14 @@ def create_demo_users(session) -> None:  # type: ignore[no-untyped-def]
     ph = PasswordHasher()
     creds_path = Path("/run/secrets/../demo_credentials.txt")
 
-    # Fallback: parse from secrets directory
+    # Demo usernames mapped to database role enum
     demo_users = [
+        ("commander1", "FLEET_SUPERVISOR"),
+        ("supervisor1", "MAINT_PLANNER"),
+        ("engineer1", "MAINT_ENGINEER"),
+        ("logistics1", "SPARES_PLANNER"),
+        ("auditor1", "SYS_ADMIN"),
+        ("admin1", "SYS_ADMIN"),
         ("fleet_supervisor", "FLEET_SUPERVISOR"),
         ("maint_planner", "MAINT_PLANNER"),
         ("maint_engineer", "MAINT_ENGINEER"),

@@ -148,10 +148,16 @@ def create_app() -> FastAPI:
     from app.api.v1.auth import router as auth_router
     from app.api.v1.system import router as system_router
     from app.api.v1.audit import router as audit_router
+    from app.api.v1.fleet import router as fleet_router
+    from app.api.v1.recommendations import router as recommendations_router
+    from app.api.v1.spares import router as spares_router
 
     application.include_router(auth_router, prefix="/api/v1")
     application.include_router(system_router, prefix="/api/v1")
     application.include_router(audit_router, prefix="/api/v1")
+    application.include_router(fleet_router, prefix="/api/v1")
+    application.include_router(recommendations_router, prefix="/api/v1")
+    application.include_router(spares_router, prefix="/api/v1")
 
     # ── Global exception handler ──────────────────────────────
     @application.exception_handler(Exception)
