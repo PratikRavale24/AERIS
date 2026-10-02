@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import socket
 import time
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
@@ -13,8 +14,21 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import APP_NAME, get_settings
 from app.core.logging import get_logger, setup_logging
+from app.core.security import constant_time_compare
 
 logger = get_logger("main")
+
+# Routes that don't require CSRF
+CSRF_EXEMPT_PATHS = frozenset({
+    "/api/v1/health",
+    "/api/v1/auth/login",
+    "/api/v1/auth/csrf",
+    "/api/docs",
+    "/api/redoc",
+    "/api/openapi.json",
+})
+
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
 @asynccontextmanager
@@ -87,26 +101,57 @@ def create_app() -> FastAPI:
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"
         response.headers["Pragma"] = "no-cache"
+        response.headers["Permissions-Policy"] = (
+            "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+            "magnetometer=(), microphone=(), payment=(), usb=()"
+        )
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
         return response
+
+    @application.middleware("http")
+    async def csrf_middleware(request: Request, call_next: Any) -> Response:
+        """Validate CSRF token on state-changing requests."""
+        if request.method not in SAFE_METHODS:
+            path = request.url.path
+            if path not in CSRF_EXEMPT_PATHS:
+                csrf_header = request.headers.get("X-CSRF-Token", "")
+                csrf_cookie = request.cookies.get("__Host-csrf_token", "")
+                if not csrf_header or not csrf_cookie:
+                    return JSONResponse(
+                        status_code=403,
+                        content={
+                            "error": "csrf_required",
+                            "message": "CSRF token required for state-changing requests",
+                        },
+                    )
+                if not constant_time_compare(csrf_header, csrf_cookie):
+                    return JSONResponse(
+                        status_code=403,
+                        content={
+                            "error": "csrf_invalid",
+                            "message": "Invalid CSRF token",
+                        },
+                    )
+        return await call_next(request)
 
     @application.middleware("http")
     async def request_id_middleware(request: Request, call_next: Any) -> Response:
         """Propagate or generate request ID."""
-        request_id = request.headers.get("X-Request-ID", f"req-{int(time.time() * 1000)}")
+        request_id = request.headers.get("X-Request-ID", f"req-{uuid.uuid4().hex[:12]}")
         request.state.request_id = request_id
         response: Response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
 
-    # ── Health endpoint (unauthenticated) ─────────────────────
-    @application.get("/api/v1/health", tags=["system"])
-    async def health_check() -> dict[str, Any]:
-        return {
-            "status": "healthy",
-            "service": APP_NAME,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "data_source": "SYNTHETIC_NON_OPERATIONAL",
-        }
+    # ── Register Routers ──────────────────────────────────────
+    from app.api.v1.auth import router as auth_router
+    from app.api.v1.system import router as system_router
+    from app.api.v1.audit import router as audit_router
+
+    application.include_router(auth_router, prefix="/api/v1")
+    application.include_router(system_router, prefix="/api/v1")
+    application.include_router(audit_router, prefix="/api/v1")
 
     # ── Global exception handler ──────────────────────────────
     @application.exception_handler(Exception)
