@@ -105,7 +105,21 @@ export function App() {
       const eventsRes = await auditApi.getSecurityEvents().catch(() => null);
 
       if (sumRes) setFleetSummary(sumRes);
-      if (acRes?.aircraft) setAircraftList(acRes.aircraft);
+      if (acRes?.aircraft) {
+        // Map backend synthetic data schema to frontend display schema
+        const mappedList = acRes.aircraft.map((a: any) => ({
+          id: a.aircraft_id,
+          tail_number: a.aircraft_id,
+          fleet_type: a.platform_type || 'Unknown',
+          base_location: 'Main Base', // Simulated base
+          status: a.status,
+          flight_hours: Math.round((a.total_cycles || 0) * (a.cycles_per_day || 2.5)),
+          highest_risk: a.highest_risk !== undefined ? a.highest_risk : 0.15, // Use synthetic fallback if not in list endpoint
+          min_rul: a.min_rul !== undefined ? a.min_rul : 120, // Use synthetic fallback if not in list endpoint
+          high_risk_components: a.high_risk_components || 0,
+        }));
+        setAircraftList(mappedList);
+      }
       if (recRes?.recommendations) setRecommendations(recRes.recommendations);
       if (sparesRes?.spares) setSpares(sparesRes.spares);
       if (facRes?.facilities) setFacilities(facRes.facilities);

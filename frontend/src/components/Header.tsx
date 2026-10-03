@@ -59,13 +59,6 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 no-print">
-      {/* Classification Strip */}
-      <div className="h-7 flex items-center justify-center text-xs font-semibold tracking-widest uppercase"
-           style={{ backgroundColor: 'var(--color-header-bg)', color: 'var(--color-caution-text)' }}>
-        <AlertTriangle className="w-3 h-3 mr-2 opacity-70" />
-        PROTOTYPE — NON-OPERATIONAL DATA
-      </div>
-
       {/* Main Command Bar */}
       <div className="border-b"
            style={{ backgroundColor: 'var(--color-bg-panel)', borderColor: 'var(--color-border)' }}>
@@ -81,10 +74,6 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-lg tracking-wide"
                         style={{ color: 'var(--color-text-primary)' }}>AERIS</span>
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                        style={{ backgroundColor: 'var(--color-bg-inset)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border-subtle)' }}>
-                    SIH26249
-                  </span>
                 </div>
                 <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
                   Aircraft Reliability & Intelligence System

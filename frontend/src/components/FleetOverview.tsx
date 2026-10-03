@@ -23,14 +23,14 @@ interface FleetOverviewProps {
 // Reusable KPI Tile
 const KpiTile: React.FC<{label: string; value: string | number; sub?: string; statusColor?: string; icon: React.ReactNode}> = 
   ({label, value, sub, statusColor, icon}) => (
-  <div className="rounded-panel p-4 flex items-start justify-between"
-       style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
+  <div className="rounded-panel p-4 flex items-start justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+       style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
     <div className="flex-1 min-w-0">
       <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
-      <p className="text-metric mt-1" style={{ color: statusColor || 'var(--color-text-primary)' }}>{value}</p>
+      <p className="text-metric mt-1 tracking-tight" style={{ color: statusColor || 'var(--color-text-primary)' }}>{value}</p>
       {sub && <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{sub}</p>}
     </div>
-    <div className="w-10 h-10 rounded-panel flex items-center justify-center shrink-0 ml-3"
+    <div className="w-10 h-10 rounded-panel flex items-center justify-center shrink-0 ml-3 transition-colors duration-300"
          style={{ backgroundColor: 'var(--color-bg-inset)', border: '1px solid var(--color-border-subtle)' }}>
       {icon}
     </div>
@@ -184,22 +184,20 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({ summary, aircraftL
                 const tier = getRiskTier(ac.highest_risk);
                 return (
                   <tr key={ac.id} onClick={() => onSelectAircraft(ac.id)}
-                      className="cursor-pointer group"
-                      style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      className="cursor-pointer group transition-colors duration-200 hover:bg-[var(--color-bg-hover)]"
+                      style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
                     <td className="px-4 py-3">
-                      <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{ac.tail_number}</span>
+                      <span className="font-bold tracking-wide" style={{ color: 'var(--color-text-primary)' }}>{ac.tail_number}</span>
                     </td>
-                    <td className="px-4 py-3" style={{ color: 'var(--color-text-secondary)' }}>{ac.fleet_type}</td>
+                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--color-text-secondary)' }}>{ac.fleet_type}</td>
                     <td className="px-4 py-3" style={{ color: 'var(--color-text-secondary)' }}>{ac.base_location}</td>
                     <td className="px-4 py-3"><StatusBadge status={ac.status} /></td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg-inset)' }}>
-                          <div className="h-full rounded-full" style={{ width: `${Math.max(5, ac.highest_risk * 100)}%`, backgroundColor: tier.bg }} />
+                          <div className={`h-full rounded-full transition-all duration-700 ${tier.label === 'HIGH' ? 'animate-pulse' : ''}`} style={{ width: `${Math.max(5, ac.highest_risk * 100)}%`, backgroundColor: tier.bg, boxShadow: `0 0 8px ${tier.bg}60` }} />
                         </div>
-                        <span className="text-[12px] font-semibold tabular-nums w-10 text-right" style={{ color: tier.color }}>
+                        <span className="text-[12px] font-bold tabular-nums w-10 text-right" style={{ color: tier.color }}>
                           {(ac.highest_risk * 100).toFixed(0)}%
                         </span>
                       </div>
