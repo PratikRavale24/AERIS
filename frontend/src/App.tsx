@@ -61,6 +61,41 @@ export function App() {
     }
   }, [user, activeTab]);
 
+  // Session Idle Timeout Enforcer (Ministry of Defense grade)
+  useEffect(() => {
+    if (!user) return;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      // 15 minutes of inactivity
+      timeoutId = setTimeout(() => {
+        authApi.logout().catch(() => {});
+        setUser(null);
+        setActiveTab('fleet'); // Reset to default
+        setNotifications([{
+          id: Date.now(),
+          message: 'Session expired due to 15 minutes of inactivity. For security purposes, please log in again.',
+          type: 'warning'
+        }]);
+      }, 15 * 60 * 1000);
+    };
+
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('keypress', resetTimer);
+    window.addEventListener('scroll', resetTimer);
+    window.addEventListener('click', resetTimer);
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keypress', resetTimer);
+      window.removeEventListener('scroll', resetTimer);
+      window.removeEventListener('click', resetTimer);
+    };
+  }, [user]);
+
   const [selectedAircraftId, setSelectedAircraftId] = useState<string | null>(null);
   const [aircraftDetail, setAircraftDetail] = useState<any | null>(null);
 
@@ -75,7 +110,7 @@ export function App() {
   const [loading, setLoading] = useState(true);
 
   // Notifications State
-  const [notifications, setNotifications] = useState<{id: number, message: string, type: 'critical' | 'warning'}[]>([]);
+  const [notifications, setNotifications] = useState<{id: number, message: string, type: 'critical' | 'warning' | 'success' | 'info'}[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -185,8 +220,8 @@ export function App() {
 
   // Fallback demo data
   const displaySummary = fleetSummary || {
-    total_aircraft: 24, readiness_rate: 0.875, high_risk_count: 3,
-    pending_recommendations: 4, spares_bottlenecks: 1, status_counts: { FMC: 18, PMC: 3, NMC: 3 },
+    total_aircraft: 24, readiness_rate: 0.875, high_risk_assets: 3,
+    maintenance_due: 4, critical_spare_shortages: 1, 
   };
 
   const displayAircraftList = aircraftList.length > 0 ? aircraftList : [
@@ -199,9 +234,9 @@ export function App() {
   ];
 
   const displayRecs = recommendations.length > 0 ? recommendations : [
-    { id: 'rec-101', aircraft_tail_number: 'SU-301', component_name: 'Turbine Blade Row 1', priority_score: 88.5, risk_probability: 0.84, rul_cycles: 18, recommended_action: 'REPLACE Engine Turbine Assembly', urgency_level: 'CRITICAL', spares_available: true, facility_slot_available: true, status: 'PENDING', evidence_passport_id: 'ep-sha256-9f4a1c8b3e' },
-    { id: 'rec-102', aircraft_tail_number: 'C130-9', component_name: 'Hydraulic Main Pump', priority_score: 94.2, risk_probability: 0.91, rul_cycles: 6, recommended_action: 'INSPECT & REPLACE Hydraulic Pump', urgency_level: 'CRITICAL', spares_available: false, facility_slot_available: true, status: 'PENDING', evidence_passport_id: 'ep-sha256-4c7b2a9e1d' },
-    { id: 'rec-103', aircraft_tail_number: 'MR-302', component_name: 'Radar Transmitter Module', priority_score: 64.0, risk_probability: 0.64, rul_cycles: 29, recommended_action: 'CALIBRATE & BENCH TEST Radar Module', urgency_level: 'HIGH', spares_available: true, facility_slot_available: false, status: 'PENDING', evidence_passport_id: 'ep-sha256-1a8e3f5d9c' },
+    { id: 'rec-101', aircraft_id: 'SU-301', component_id: 'Turbine Blade Row 1', priority_score: 88.5, priority_tier: 'CRITICAL', risk_score: 0.84, rul_q50: 18, recommended_action: 'REPLACE Engine Turbine Assembly', part_status: 'READY', facility_id: 'Depot 1', status: 'PENDING', evidence_passport_id: 'ep-sha256-9f4a1c8b3e', reason_codes: ['RUL_CRITICAL'] },
+    { id: 'rec-102', aircraft_id: 'C130-9', component_id: 'Hydraulic Main Pump', priority_score: 94.2, priority_tier: 'CRITICAL', risk_score: 0.91, rul_q50: 6, recommended_action: 'INSPECT & REPLACE Hydraulic Pump', part_status: 'SHORTAGE', facility_id: 'Depot 1', status: 'PENDING', evidence_passport_id: 'ep-sha256-4c7b2a9e1d', reason_codes: ['RISK_CRITICAL'] },
+    { id: 'rec-103', aircraft_id: 'MR-302', component_id: 'Radar Transmitter Module', priority_score: 64.0, priority_tier: 'HIGH', risk_score: 0.64, rul_q50: 29, recommended_action: 'CALIBRATE & BENCH TEST Radar Module', part_status: 'READY', facility_id: 'Bay 2', status: 'PENDING', evidence_passport_id: 'ep-sha256-1a8e3f5d9c', reason_codes: ['ANOMALY_DETECTED'] },
   ];
 
   const displaySpares = spares.length > 0 ? spares : [
@@ -246,6 +281,11 @@ export function App() {
             setUser(u);
             setActiveTab(getPrimaryTab(u.role));
             setShowLoginModal(false);
+            setNotifications([{
+              id: Date.now(),
+              message: `Successfully authenticated as ${u.role}. Welcome, ${u.username}.`,
+              type: 'success'
+            }]);
           }}
         />
       </div>
@@ -330,17 +370,18 @@ export function App() {
       {/* Toast Notifications */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
         {notifications.map(n => (
-          <div key={n.id} className="p-4 rounded-panel flex items-start gap-3 w-80"
+          <div key={n.id} className="p-4 rounded-panel flex items-start gap-3 w-80 animate-in slide-in-from-bottom-5 fade-in duration-300"
                style={{
-                 backgroundColor: n.type === 'critical' ? 'var(--color-bg-panel)' : 'var(--color-bg-panel)',
-                 border: `1px solid ${n.type === 'critical' ? 'var(--color-critical)' : 'var(--color-caution)'}`,
+                 backgroundColor: 'var(--color-bg-panel)',
+                 border: `1px solid ${n.type === 'critical' ? 'var(--color-critical)' : n.type === 'warning' ? 'var(--color-caution)' : 'var(--color-ok)'}`,
                  boxShadow: 'var(--shadow-modal)',
                }}>
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5"
-                           style={{ color: n.type === 'critical' ? 'var(--color-critical-text)' : 'var(--color-caution-text)' }} />
+            <Info className="w-4 h-4 shrink-0 mt-0.5"
+                  style={{ color: n.type === 'critical' ? 'var(--color-critical-text)' : n.type === 'warning' ? 'var(--color-caution-text)' : 'var(--color-ok-text)' }} />
             <p className="flex-1 text-[12px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{n.message}</p>
             <button onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
-                    style={{ color: 'var(--color-text-muted)' }}>
+                    style={{ color: 'var(--color-text-muted)', transition: 'color 0.2s' }}
+                    className="hover:text-white">
               <X className="w-4 h-4" />
             </button>
           </div>

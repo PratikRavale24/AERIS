@@ -56,6 +56,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({ recomm
     setErrorMsg(null);
     try {
       await recommendationsApi.recordDecision(selectedRec.id, { action, reason: finalReason });
+      
+      // Update local state to reflect the decision immediately for UX
+      selectedRec.status = action === 'ACCEPT' ? 'ACCEPTED' : action === 'DEFER' ? 'DEFERRED' : action === 'REJECT' ? 'REJECTED' : 'PENDING_SECOND_APPROVAL';
+
       setJustification('');
       setShowOverrideModal(false);
       onRefresh();

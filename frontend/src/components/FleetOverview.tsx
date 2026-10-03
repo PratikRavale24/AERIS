@@ -12,9 +12,9 @@ interface AircraftSummary {
 
 interface FleetOverviewProps {
   summary: {
-    total_aircraft: number; readiness_rate: number; high_risk_count: number;
-    pending_recommendations: number; spares_bottlenecks: number;
-    status_counts: Record<string, number>;
+    total_aircraft?: number; readiness_rate?: number; availability?: number;
+    high_risk_assets?: number; maintenance_due?: number; critical_spare_shortages?: number;
+    status_counts?: Record<string, number>;
   } | null;
   aircraftList: AircraftSummary[];
   onSelectAircraft: (id: string) => void;
@@ -102,16 +102,16 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({ summary, aircraftL
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <KpiTile label="Total Aircraft" value={summary?.total_aircraft ?? 0} sub="Monitored assets"
                  icon={<Plane className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />} />
-        <KpiTile label="Fleet Availability" value={summary ? `${(summary.readiness_rate * 100).toFixed(1)}%` : '—'}
+        <KpiTile label="Fleet Availability" value={summary ? `${((summary.readiness_rate || summary.availability || 0) * 100).toFixed(1)}%` : '—'}
                  sub="FMC + PMC" statusColor="var(--color-ok-text)"
                  icon={<CheckCircle2 className="w-5 h-5" style={{ color: 'var(--color-ok-text)' }} />} />
-        <KpiTile label="High Risk Assets" value={summary?.high_risk_count ?? 0} sub="Risk ≥ 70%"
+        <KpiTile label="High Risk Assets" value={summary?.high_risk_assets ?? 0} sub="Risk ≥ 70%"
                  statusColor="var(--color-critical-text)"
                  icon={<AlertTriangle className="w-5 h-5" style={{ color: 'var(--color-critical-text)' }} />} />
-        <KpiTile label="Pending Actions" value={summary?.pending_recommendations ?? 0} sub="Decision queue"
+        <KpiTile label="Pending Actions" value={summary?.maintenance_due ?? 0} sub="Decision queue"
                  statusColor="var(--color-caution-text)"
                  icon={<Wrench className="w-5 h-5" style={{ color: 'var(--color-caution-text)' }} />} />
-        <KpiTile label="Spare Shortages" value={summary?.spares_bottlenecks ?? 0} sub="Lead time > RUL"
+        <KpiTile label="Spare Shortages" value={summary?.critical_spare_shortages ?? 0} sub="Lead time > RUL"
                  icon={<TrendingDown className="w-5 h-5" style={{ color: 'var(--color-text-muted)' }} />} />
       </div>
 
