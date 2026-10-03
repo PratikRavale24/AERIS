@@ -1,77 +1,152 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface OnboardingTourProps {
   userRole: string;
+  setActiveTab: (tab: string) => void;
 }
 
-export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole }) => {
-  const [run, setRun] = useState(false);
+export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setActiveTab }) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const [run, setRun] = useState(false);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     const tourKey = `aeris_tour_completed_${userRole}`;
     if (!localStorage.getItem(tourKey)) {
-      setRun(true);
+      setTimeout(() => setRun(true), 500);
     }
   }, [userRole]);
 
-  const steps = [
-    {
-      title: 'Welcome to AERIS',
-      content: 'This is your intelligence-driven aircraft reliability system. Let\'s take a quick tour to help you get started.',
-    },
-    ...(userRole === 'FLEET_SUPERVISOR' ? [
-      {
-        title: 'Fleet Overview',
-        content: 'Monitor the readiness and risk levels of all your aircraft at a glance.',
-      },
-      {
-        title: 'Maintenance Queue',
-        content: 'Review AI-generated maintenance recommendations and securely authorize operational decisions.',
-      }
-    ] : userRole === 'MAINT_PLANNER' || userRole === 'MAINT_ENGINEER' ? [
-      {
-        title: 'Maintenance Queue',
-        content: 'Your primary workspace. Review AI risk assessments and provide operational rationale.',
-      },
-      {
-        title: 'Spare Readiness',
-        content: 'Check component availability and depot capacity before scheduling maintenance.',
-      }
-    ] : userRole === 'SYS_ADMIN' ? [
-      {
-        title: 'Audit & Reports',
-        content: 'The Audit dashboard provides a real-time look at cryptographic integrity and security events.',
-      }
-    ] : [
-      {
-        title: 'Fleet Overview',
-        content: 'Monitor fleet health and analytics from this main dashboard.',
-      }
-    ])
+  const steps = userRole === 'FLEET_SUPERVISOR' ? [
+    { element: '.tour-fleet', title: 'Fleet Overview', desc: 'Monitor the readiness and risk levels of all your aircraft.', action: null },
+    { element: '.tour-kpi-row', title: 'Key Metrics', desc: 'These KPIs highlight critical shortages and high-risk assets requiring immediate attention.', action: null },
+    { element: null, title: 'Switching Views', desc: 'Now let\'s look at the Maintenance Queue to record decisions.', action: () => setActiveTab('recommendations') },
+    { element: '.tour-record-decision', title: 'Interactive Workspace', desc: 'Go ahead, you can actually type an operational rationale and click Accept to see the system record your decision securely!', action: null }
+  ] : userRole === 'MAINT_PLANNER' || userRole === 'MAINT_ENGINEER' ? [
+    { element: null, title: 'Maintenance Queue', desc: 'Your primary workspace. Let\'s review AI risk assessments.', action: () => setActiveTab('recommendations') },
+    { element: '.tour-record-decision', title: 'Operational Rationale', desc: 'Authorize AI recommendations by providing reasoning. Try typing a rationale and clicking Accept!', action: null },
+    { element: '.tour-evidence', title: 'Cryptographic Audit', desc: 'Every recommendation is backed by a verifiable SHA-256 evidence passport to ensure data integrity.', action: null }
+  ] : userRole === 'SYS_ADMIN' ? [
+    { element: null, title: 'System Admin', desc: 'Welcome to the Audit dashboard. Let me pull that up for you.', action: () => setActiveTab('security') },
+    { element: '.tour-security', title: 'Live Security Posture', desc: 'Monitor real-time cryptographic integrity and air-gapped egress isolation.', action: null }
+  ] : [
+    { element: null, title: 'Welcome to AERIS', desc: 'This is your intelligence-driven aircraft reliability system.', action: null }
   ];
 
-  if (!run) return null;
+  const updateRect = useCallback(() => {
+    if (!run || currentStep >= steps.length) return;
+    const step = steps[currentStep];
+    if (step.element) {
+      const el = document.querySelector(step.element);
+      if (el) {
+        setTargetRect(el.getBoundingClientRect());
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (el as HTMLElement).style.position = 'relative';
+        (el as HTMLElement).style.zIndex = '999999';
+        (el as HTMLElement).style.pointerEvents = 'auto'; // allow clicking
+        return;
+      }
+    }
+    setTargetRect(null);
+  }, [run, currentStep, steps]);
+
+  useEffect(() => {
+    window.addEventListener('resize', updateRect);
+    return () => window.removeEventListener('resize', updateRect);
+  }, [updateRect]);
+
+  useEffect(() => {
+    const interval = setInterval(updateRect, 200);
+    return () => clearInterval(interval);
+  }, [updateRect]);
+
+  const cleanupPrev = () => {
+    const prevStep = steps[currentStep];
+    if (prevStep && prevStep.element) {
+      const el = document.querySelector(prevStep.element);
+      if (el) {
+        (el as HTMLElement).style.position = '';
+        (el as HTMLElement).style.zIndex = '';
+        (el as HTMLElement).style.pointerEvents = '';
+      }
+    }
+  };
 
   const handleNext = () => {
+    cleanupPrev();
     if (currentStep === steps.length - 1) {
       setRun(false);
       localStorage.setItem(`aeris_tour_completed_${userRole}`, 'true');
     } else {
+      const nextStep = steps[currentStep + 1];
+      if (nextStep.action) {
+        nextStep.action();
+      }
       setCurrentStep(prev => prev + 1);
     }
   };
 
   const handleSkip = () => {
+    cleanupPrev();
     setRun(false);
     localStorage.setItem(`aeris_tour_completed_${userRole}`, 'true');
   };
 
+  if (!run || currentStep >= steps.length) return null;
+
   const step = steps[currentStep];
 
+  // Calculate popover position
+  let popoverTop = '50%';
+  let popoverLeft = '50%';
+  let transform = 'translate(-50%, -50%)';
+
+  if (targetRect) {
+    // Try placing below the element
+    popoverTop = `${targetRect.bottom + 20}px`;
+    popoverLeft = `${targetRect.left + (targetRect.width / 2)}px`;
+    transform = 'translate(-50%, 0)';
+    
+    // If it goes off screen bottom, put it above
+    if (targetRect.bottom + 200 > window.innerHeight) {
+      popoverTop = `${targetRect.top - 20}px`;
+      transform = 'translate(-50%, -100%)';
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="w-[400px] p-6 rounded-xl shadow-2xl flex flex-col gap-4" style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
+    <>
+      {/* Dynamic Overlay Shadow */}
+      <div 
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: 999998,
+          pointerEvents: targetRect ? 'none' : 'auto', // If no target, block all clicks behind
+          background: targetRect ? 'transparent' : 'rgba(0,0,0,0.7)',
+          boxShadow: targetRect 
+            ? `0 0 0 9999px rgba(0,0,0,0.7) inset, 0 0 0 9999px rgba(0,0,0,0.7)` 
+            : 'none',
+          clipPath: targetRect 
+            ? `polygon(0% 0%, 0% 100%, ${targetRect.left - 10}px 100%, ${targetRect.left - 10}px ${targetRect.top - 10}px, ${targetRect.right + 10}px ${targetRect.top - 10}px, ${targetRect.right + 10}px ${targetRect.bottom + 10}px, ${targetRect.left - 10}px ${targetRect.bottom + 10}px, ${targetRect.left - 10}px 100%, 100% 100%, 100% 0%)`
+            : 'none',
+          transition: 'all 0.3s ease'
+        }}
+      />
+      
+      {/* Popover */}
+      <div 
+        className="fixed p-6 rounded-xl shadow-2xl flex flex-col gap-4 w-[350px] animate-in fade-in zoom-in duration-300"
+        style={{ 
+          backgroundColor: 'var(--color-bg-panel)', 
+          border: '1px solid var(--color-border)',
+          zIndex: 999999,
+          top: popoverTop,
+          left: popoverLeft,
+          transform: transform,
+          transition: 'top 0.3s ease, left 0.3s ease'
+        }}
+      >
         <div>
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-lg font-bold text-white">{step.title}</h3>
@@ -80,7 +155,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole }) => {
             </span>
           </div>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-            {step.content}
+            {step.desc}
           </p>
         </div>
         
@@ -102,6 +177,6 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole }) => {
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
