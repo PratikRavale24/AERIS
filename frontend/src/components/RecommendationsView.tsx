@@ -206,7 +206,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({ recomm
 
             {/* Action Panel */}
             {(selectedRec.status === 'OPEN' || selectedRec.status === 'PENDING') ? (
-              <div className="p-5 rounded-panel space-y-4"
+              <div className="p-5 rounded-panel space-y-4 tour-record-decision"
                    style={{ backgroundColor: 'var(--color-bg-raised)', border: '1px solid var(--color-border-subtle)' }}>
                 <div className="flex items-center gap-2 pb-2" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
                   <Wrench className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
@@ -260,7 +260,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({ recomm
             )}
 
             {/* Evidence Passport */}
-            <div className="pt-4" style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
+            <div className="pt-4 tour-evidence" style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-medium flex items-center gap-2" style={{ color: 'var(--color-text-muted)' }}>
                   <FileCode className="w-3.5 h-3.5" style={{ color: 'var(--color-ok-text)' }} />

@@ -309,7 +309,7 @@ export function App() {
   return (
     <div className="min-h-screen flex flex-col"
          style={{ backgroundColor: 'var(--color-bg-canvas)', color: 'var(--color-text-primary)' }}>
-      {user && <OnboardingTour userRole={user.role} />}
+      {user && <OnboardingTour userRole={user.role} setActiveTab={setActiveTab} />}
       {/* Navigation Header */}
       <Header
         user={user}
