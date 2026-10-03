@@ -82,7 +82,12 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        """Build the database URL using the app role (DML only)."""
+        """Build the database URL using the app role (DML only) or full env URL."""
+        if os.environ.get("DATABASE_URL"):
+            url = os.environ.get("DATABASE_URL")
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+            return url
         password = read_secret("db_password")
         return (
             f"postgresql+psycopg2://vayu_app:{password}"
@@ -92,6 +97,13 @@ class Settings(BaseSettings):
     @property
     def database_url_async(self) -> str:
         """Build the async database URL."""
+        if os.environ.get("DATABASE_URL"):
+            url = os.environ.get("DATABASE_URL")
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql+psycopg2://"):
+                url = url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+            return url
         password = read_secret("db_password")
         return (
             f"postgresql+asyncpg://vayu_app:{password}"
@@ -101,6 +113,11 @@ class Settings(BaseSettings):
     @property
     def migrator_database_url(self) -> str:
         """Build the database URL using the migrator role (DDL)."""
+        if os.environ.get("DATABASE_URL"):
+            url = os.environ.get("DATABASE_URL")
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+            return url
         password = read_secret("db_migrator_password")
         return (
             f"postgresql+psycopg2://vayu_migrator:{password}"
