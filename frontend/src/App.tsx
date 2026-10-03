@@ -134,7 +134,15 @@ export function App() {
       .getAircraftDetail(selectedAircraftId)
       .then((res) => setAircraftDetail(res))
       .catch(() => {
-        const found = aircraftList.find((a) => a.id === selectedAircraftId);
+        const fallbackList = aircraftList.length > 0 ? aircraftList : [
+          { id: 'ac-1', tail_number: 'SU-301', fleet_type: 'Su-30MKI', base_location: 'Hasimara', status: 'PMC', flight_hours: 1420, highest_risk: 0.84, min_rul: 18, high_risk_components: 1 },
+          { id: 'ac-2', tail_number: 'RF-204', fleet_type: 'Rafale', base_location: 'Ambala', status: 'FMC', flight_hours: 890, highest_risk: 0.12, min_rul: 140, high_risk_components: 0 },
+          { id: 'ac-3', tail_number: 'TJ-108', fleet_type: 'Tejas MK1A', base_location: 'Sulur', status: 'FMC', flight_hours: 450, highest_risk: 0.28, min_rul: 88, high_risk_components: 0 },
+          { id: 'ac-4', tail_number: 'C130-9', fleet_type: 'C-130J', base_location: 'Jorhat', status: 'NMC', flight_hours: 2100, highest_risk: 0.91, min_rul: 6, high_risk_components: 2 },
+          { id: 'ac-5', tail_number: 'AH-641', fleet_type: 'AH-64E', base_location: 'Pathankot', status: 'FMC', flight_hours: 640, highest_risk: 0.08, min_rul: 210, high_risk_components: 0 },
+          { id: 'ac-6', tail_number: 'MR-302', fleet_type: 'Mirage 2000', base_location: 'Leh', status: 'PMC', flight_hours: 1840, highest_risk: 0.64, min_rul: 29, high_risk_components: 1 },
+        ];
+        const found = fallbackList.find((a) => a.id === selectedAircraftId);
         if (found) {
           setAircraftDetail({
             ...found,
@@ -215,6 +223,21 @@ export function App() {
     { id: 'se-3', event_type: 'USER_AUTHENTICATED', severity: 'INFO', description: 'User supervisor1 logged in with supervisor role', created_at: new Date().toISOString() },
   ];
 
+  if (!user && !checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg-canvas)' }}>
+        <LoginModal
+          onClose={() => {}}
+          onLoginSuccess={(u) => {
+            setUser(u);
+            setActiveTab(getPrimaryTab(u.role));
+            setShowLoginModal(false);
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col"
          style={{ backgroundColor: 'var(--color-bg-canvas)', color: 'var(--color-text-primary)' }}>
@@ -273,14 +296,10 @@ export function App() {
         />
       )}
 
-      {/* Login Modal */}
-      {(showLoginModal || !user) && !checkingAuth && (
+      {/* Login Modal (for re-auth if already logged in) */}
+      {showLoginModal && user && !checkingAuth && (
         <LoginModal
-          onClose={() => {
-            if (user) {
-              setShowLoginModal(false);
-            }
-          }}
+          onClose={() => setShowLoginModal(false)}
           onLoginSuccess={(u) => {
             setUser(u);
             setActiveTab(getPrimaryTab(u.role));

@@ -63,10 +63,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess 
                 Aircraft Reliability & Intelligence System
               </p>
             </div>
-            <button onClick={onClose} className="p-1 rounded"
-                    style={{ color: 'var(--color-text-muted)' }}>
-              <X className="w-5 h-5" />
-            </button>
           </div>
 
           {/* Error */}
