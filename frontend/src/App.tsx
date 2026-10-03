@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AlertTriangle, X, Info } from 'lucide-react';
 import { Header } from './components/Header';
 import { FleetOverview } from './components/FleetOverview';
 import { AircraftDetailModal } from './components/AircraftDetailModal';
@@ -13,16 +14,46 @@ export function App() {
   const [activeTab, setActiveTab] = useState('fleet');
   const [user, setUser] = useState<{ username: string; role: string } | null>(null);
 
+  const getPrimaryTab = (role: string) => {
+    switch (role) {
+      case 'FLEET_SUPERVISOR': return 'fleet';
+      case 'MAINT_PLANNER': return 'recommendations';
+      case 'MAINT_ENGINEER': return 'recommendations';
+      case 'SPARES_PLANNER': return 'spares';
+      case 'SYS_ADMIN': return 'security';
+      default: return 'fleet';
+    }
+  };
+
   useEffect(() => {
     authApi.me()
-      .then((res) => setUser({ username: res.username, role: res.role }))
+      .then((res) => {
+        setUser({ username: res.username, role: res.role });
+        setActiveTab(getPrimaryTab(res.role));
+      })
       .catch(() => setUser(null));
   }, []);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showModelCards, setShowModelCards] = useState(false);
 
-  // Selected Aircraft Modal state
+  // Role-based route enforcer
+  useEffect(() => {
+    if (user) {
+      const allowedTabs: Record<string, string[]> = {
+        'FLEET_SUPERVISOR': ['fleet', 'recommendations'],
+        'MAINT_PLANNER': ['fleet', 'recommendations', 'spares'],
+        'MAINT_ENGINEER': ['fleet', 'recommendations'],
+        'SPARES_PLANNER': ['spares', 'recommendations'],
+        'SYS_ADMIN': ['security', 'fleet'],
+      };
+      const allowed = allowedTabs[user.role] || ['fleet'];
+      if (!allowed.includes(activeTab)) {
+        setActiveTab(getPrimaryTab(user.role));
+      }
+    }
+  }, [user, activeTab]);
+
   const [selectedAircraftId, setSelectedAircraftId] = useState<string | null>(null);
   const [aircraftDetail, setAircraftDetail] = useState<any | null>(null);
 
@@ -36,10 +67,23 @@ export function App() {
   const [securityEvents, setSecurityEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Notifications State
+  const [notifications, setNotifications] = useState<{id: number, message: string, type: 'critical' | 'warning'}[]>([]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        message: `PRIORITY ALERT: C130-9 Hydraulic Main Pump exceeded 90% risk threshold. Spares shortage detected.`,
+        type: 'critical'
+      }]);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Load initial data
   const loadData = async () => {
     try {
-      // Fleet summary & list
       const sumRes = await fleetApi.getSummary().catch(() => null);
       const acRes = await fleetApi.getAircraftList().catch(() => null);
       const recRes = await recommendationsApi.getList().catch(() => null);
@@ -78,7 +122,6 @@ export function App() {
       .getAircraftDetail(selectedAircraftId)
       .then((res) => setAircraftDetail(res))
       .catch(() => {
-        // Fallback demo object if backend seeding pending
         const found = aircraftList.find((a) => a.id === selectedAircraftId);
         if (found) {
           setAircraftDetail({
@@ -87,40 +130,18 @@ export function App() {
             total_cycles: 340,
             components: [
               {
-                id: 'comp-1',
-                name: 'Turbine Blade Row 1',
-                serial_number: 'TB-9941A',
-                component_type: 'ENGINE_TURBINE_BLADE',
-                current_cycles: 340,
-                max_design_cycles: 500,
+                id: 'comp-1', name: 'Turbine Blade Row 1', serial_number: 'TB-9941A',
+                component_type: 'ENGINE_TURBINE_BLADE', current_cycles: 340, max_design_cycles: 500,
                 prediction: {
-                  failure_probability_10c: 0.842,
-                  rul_cycles_mean: 18,
-                  rul_cycles_p10: 12,
-                  rul_cycles_p90: 24,
+                  failure_probability_10c: 0.842, rul_cycles_mean: 18, rul_cycles_p10: 12, rul_cycles_p90: 24,
                   is_anomaly: true,
-                  shap_json: {
-                    egt_celsius_ewma10: 0.284,
-                    vibration_rms_mean10: 0.192,
-                    oil_pressure_psi_min10: -0.114,
-                    exhaust_temp_slope: 0.082,
-                  },
+                  shap_json: { egt_celsius_ewma10: 0.284, vibration_rms_mean10: 0.192, oil_pressure_psi_min10: -0.114, exhaust_temp_slope: 0.082 },
                 },
               },
               {
-                id: 'comp-2',
-                name: 'Hydraulic Actuator Pump',
-                serial_number: 'HA-2041B',
-                component_type: 'HYDRAULIC_PUMP',
-                current_cycles: 280,
-                max_design_cycles: 600,
-                prediction: {
-                  failure_probability_10c: 0.12,
-                  rul_cycles_mean: 140,
-                  rul_cycles_p10: 115,
-                  rul_cycles_p90: 165,
-                  is_anomaly: false,
-                },
+                id: 'comp-2', name: 'Hydraulic Actuator Pump', serial_number: 'HA-2041B',
+                component_type: 'HYDRAULIC_PUMP', current_cycles: 280, max_design_cycles: 600,
+                prediction: { failure_probability_10c: 0.12, rul_cycles_mean: 140, rul_cycles_p10: 115, rul_cycles_p90: 165, is_anomaly: false },
               },
             ],
           });
@@ -128,14 +149,10 @@ export function App() {
       });
   }, [selectedAircraftId, aircraftList]);
 
-  // Fallback demo data if backend database is not yet seeded
+  // Fallback demo data
   const displaySummary = fleetSummary || {
-    total_aircraft: 24,
-    readiness_rate: 0.875,
-    high_risk_count: 3,
-    pending_recommendations: 4,
-    spares_bottlenecks: 1,
-    status_counts: { FMC: 18, PMC: 3, NMC: 3 },
+    total_aircraft: 24, readiness_rate: 0.875, high_risk_count: 3,
+    pending_recommendations: 4, spares_bottlenecks: 1, status_counts: { FMC: 18, PMC: 3, NMC: 3 },
   };
 
   const displayAircraftList = aircraftList.length > 0 ? aircraftList : [
@@ -148,54 +165,15 @@ export function App() {
   ];
 
   const displayRecs = recommendations.length > 0 ? recommendations : [
-    {
-      id: 'rec-101',
-      aircraft_tail_number: 'SU-301',
-      component_name: 'Turbine Blade Row 1',
-      priority_score: 88.5,
-      risk_probability: 0.84,
-      rul_cycles: 18,
-      recommended_action: 'REPLACE Engine Turbine Assembly',
-      urgency_level: 'CRITICAL',
-      spares_available: true,
-      facility_slot_available: true,
-      status: 'PENDING',
-      evidence_passport_id: 'ep-sha256-9f4a1c8b3e',
-    },
-    {
-      id: 'rec-102',
-      aircraft_tail_number: 'C130-9',
-      component_name: 'Hydraulic Main Pump',
-      priority_score: 94.2,
-      risk_probability: 0.91,
-      rul_cycles: 6,
-      recommended_action: 'INSPECT & REPLACE Hydraulic Pump',
-      urgency_level: 'CRITICAL',
-      spares_available: false,
-      facility_slot_available: true,
-      status: 'PENDING',
-      evidence_passport_id: 'ep-sha256-4c7b2a9e1d',
-    },
-    {
-      id: 'rec-103',
-      aircraft_tail_number: 'MR-302',
-      component_name: 'Radar Transmitter Module',
-      priority_score: 64.0,
-      risk_probability: 0.64,
-      rul_cycles: 29,
-      recommended_action: 'CALIBRATE & BENCH TEST Radar Module',
-      urgency_level: 'HIGH',
-      spares_available: true,
-      facility_slot_available: false,
-      status: 'PENDING',
-      evidence_passport_id: 'ep-sha256-1a8e3f5d9c',
-    },
+    { id: 'rec-101', aircraft_tail_number: 'SU-301', component_name: 'Turbine Blade Row 1', priority_score: 88.5, risk_probability: 0.84, rul_cycles: 18, recommended_action: 'REPLACE Engine Turbine Assembly', urgency_level: 'CRITICAL', spares_available: true, facility_slot_available: true, status: 'PENDING', evidence_passport_id: 'ep-sha256-9f4a1c8b3e' },
+    { id: 'rec-102', aircraft_tail_number: 'C130-9', component_name: 'Hydraulic Main Pump', priority_score: 94.2, risk_probability: 0.91, rul_cycles: 6, recommended_action: 'INSPECT & REPLACE Hydraulic Pump', urgency_level: 'CRITICAL', spares_available: false, facility_slot_available: true, status: 'PENDING', evidence_passport_id: 'ep-sha256-4c7b2a9e1d' },
+    { id: 'rec-103', aircraft_tail_number: 'MR-302', component_name: 'Radar Transmitter Module', priority_score: 64.0, risk_probability: 0.64, rul_cycles: 29, recommended_action: 'CALIBRATE & BENCH TEST Radar Module', urgency_level: 'HIGH', spares_available: true, facility_slot_available: false, status: 'PENDING', evidence_passport_id: 'ep-sha256-1a8e3f5d9c' },
   ];
 
   const displaySpares = spares.length > 0 ? spares : [
-    { id: 'sp-1', part_name: 'Turbine Blade Assembly R1', part_number: 'TB-9941-A', component_type: 'ENGINE_TURBINE_BLADE', stock_quantity: 4, reserved_quantity: 1, lead_time_days: 12, unit_cost_inr: 4500000 },
-    { id: 'sp-2', part_name: 'Hydraulic Main Pump C-130', part_number: 'HP-8832-B', component_type: 'HYDRAULIC_PUMP', stock_quantity: 1, reserved_quantity: 1, lead_time_days: 35, unit_cost_inr: 1800000 },
-    { id: 'sp-3', part_name: 'Radar Transmitter Module', part_number: 'RTM-4020-C', component_type: 'RADAR_TRANSMITTER', stock_quantity: 2, reserved_quantity: 0, lead_time_days: 14, unit_cost_inr: 6200000 },
+    { part_no: 'TB-9941-A', description: 'Turbine Blade Assembly R1', stock: 4, min_stock: 5, lead_time_days: 12, criticality: 'CRITICAL', status: 'LOW_STOCK' },
+    { part_no: 'HP-8832-B', description: 'Hydraulic Main Pump C-130', stock: 0, min_stock: 2, lead_time_days: 35, criticality: 'CRITICAL', status: 'SHORTAGE' },
+    { part_no: 'RTM-4020-C', description: 'Radar Transmitter Module', stock: 2, min_stock: 1, lead_time_days: 14, criticality: 'HIGH', status: 'READY' },
   ];
 
   const displayFacilities = facilities.length > 0 ? facilities : [
@@ -226,7 +204,8 @@ export function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-gray-100 flex flex-col font-sans">
+    <div className="min-h-screen flex flex-col"
+         style={{ backgroundColor: 'var(--color-bg-canvas)', color: 'var(--color-text-primary)' }}>
       {/* Navigation Header */}
       <Header
         user={user}
@@ -244,42 +223,33 @@ export function App() {
         }}
       />
 
-      {/* Main View Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Main Content */}
+      <main className="flex-1 max-w-screen-2xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
         {activeTab === 'fleet' && (
-          <FleetOverview
-            summary={displaySummary}
-            aircraftList={displayAircraftList}
-            onSelectAircraft={(id) => setSelectedAircraftId(id)}
-          />
+          <FleetOverview summary={displaySummary} aircraftList={displayAircraftList}
+                         onSelectAircraft={(id) => setSelectedAircraftId(id)} />
         )}
-
         {activeTab === 'recommendations' && (
-          <RecommendationsView
-            recommendations={displayRecs}
-            userRole={user?.role || 'supervisor'}
-            onRefresh={loadData}
-          />
+          <RecommendationsView recommendations={displayRecs} userRole={user?.role || 'supervisor'} onRefresh={loadData} />
         )}
-
         {activeTab === 'spares' && (
-          <SparesFacilitiesView
-            spares={displaySpares}
-            facilities={displayFacilities}
-            readinessData={[]}
-          />
+          <SparesFacilitiesView spares={displaySpares} facilities={displayFacilities} readinessData={[]} />
         )}
-
         {activeTab === 'security' && (
-          <AuditSecurityView
-            posture={displayPosture}
-            securityEvents={displayEvents}
-            onRefresh={loadData}
-          />
+          <AuditSecurityView posture={displayPosture} securityEvents={displayEvents} onRefresh={loadData} />
         )}
       </main>
 
-      {/* Aircraft Detail Modal / Slide-over */}
+      {/* Footer */}
+      <footer className="py-3 px-6 text-center no-print"
+              style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
+        <p className="text-[11px] flex items-center justify-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+          <Info className="w-3 h-3 shrink-0" />
+          This system is a maintenance decision-support prototype. Predictions are not airworthiness or release-to-service decisions and are not validated for operational aircraft.
+        </p>
+      </footer>
+
+      {/* Aircraft Detail Modal */}
       {selectedAircraftId && (
         <AircraftDetailModal
           aircraft={aircraftDetail}
@@ -291,11 +261,14 @@ export function App() {
         />
       )}
 
-      {/* Persona Login Modal */}
+      {/* Login Modal */}
       {showLoginModal && (
         <LoginModal
           onClose={() => setShowLoginModal(false)}
-          onLoginSuccess={(u) => setUser(u)}
+          onLoginSuccess={(u) => {
+            setUser(u);
+            setActiveTab(getPrimaryTab(u.role));
+          }}
         />
       )}
 
@@ -303,6 +276,26 @@ export function App() {
       {showModelCards && (
         <ModelCardsModal onClose={() => setShowModelCards(false)} />
       )}
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        {notifications.map(n => (
+          <div key={n.id} className="p-4 rounded-panel flex items-start gap-3 w-80"
+               style={{
+                 backgroundColor: n.type === 'critical' ? 'var(--color-bg-panel)' : 'var(--color-bg-panel)',
+                 border: `1px solid ${n.type === 'critical' ? 'var(--color-critical)' : 'var(--color-caution)'}`,
+                 boxShadow: 'var(--shadow-modal)',
+               }}>
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5"
+                           style={{ color: n.type === 'critical' ? 'var(--color-critical-text)' : 'var(--color-caution-text)' }} />
+            <p className="flex-1 text-[12px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{n.message}</p>
+            <button onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
+                    style={{ color: 'var(--color-text-muted)' }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

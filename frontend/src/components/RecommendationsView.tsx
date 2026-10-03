@@ -1,37 +1,16 @@
 import React, { useState } from 'react';
 import { 
-  FileCheck2, 
-  AlertTriangle, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  ShieldAlert, 
-  FileCode, 
-  Wrench,
-  Package,
-  Building2,
-  UserCheck
+  FileCheck2, AlertTriangle, CheckCircle2, XCircle, Clock, 
+  ShieldAlert, FileCode, Wrench, Package, Building2, UserCheck
 } from 'lucide-react';
 import { recommendationsApi } from '../api/client';
 
 interface RecommendationItem {
-  id: string;
-  aircraft_id: string;
-  component_id: string;
-  priority_score: number;
-  priority_tier: string;
-  reason_codes: string[];
-  recommended_action: string;
-  part_no?: string;
-  part_status?: string;
-  facility_id?: string;
-  status: string;
-  risk_score?: number;
-  rul_q10?: number;
-  rul_q50?: number;
-  rul_q90?: number;
-  trust_score?: number;
-  evidence_passport_id?: string;
+  id: string; aircraft_id: string; component_id: string; priority_score: number;
+  priority_tier: string; reason_codes: string[]; recommended_action: string;
+  part_no?: string; part_status?: string; facility_id?: string; status: string;
+  risk_score?: number; rul_q10?: number; rul_q50?: number; rul_q90?: number;
+  trust_score?: number; evidence_passport_id?: string;
 }
 
 interface RecommendationsViewProps {
@@ -40,40 +19,43 @@ interface RecommendationsViewProps {
   onRefresh: () => void;
 }
 
-export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
-  recommendations,
-  userRole,
-  onRefresh,
-}) => {
+const PriorityBadge: React.FC<{tier: string}> = ({tier}) => {
+  const t = tier?.toUpperCase() || 'MEDIUM';
+  const colors: Record<string, {color: string; bg: string}> = {
+    'CRITICAL': {color: 'var(--color-critical-text)', bg: 'var(--color-critical)'},
+    'HIGH': {color: 'var(--color-high-text)', bg: 'var(--color-high)'},
+    'MEDIUM': {color: 'var(--color-caution-text)', bg: 'var(--color-caution)'},
+    'LOW': {color: 'var(--color-text-muted)', bg: 'var(--color-border)'},
+  };
+  const c = colors[t] || colors.MEDIUM;
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+          style={{ backgroundColor: c.bg + '20', color: c.color, border: `1px solid ${c.bg}40` }}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: c.bg }} />
+      {t}
+    </span>
+  );
+};
+
+export const RecommendationsView: React.FC<RecommendationsViewProps> = ({ recommendations, userRole, onRefresh }) => {
   const [selectedId, setSelectedId] = useState<string | null>(recommendations[0]?.id || null);
   const [justification, setJustification] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Two-Person Override Modal state
   const [showOverrideModal, setShowOverrideModal] = useState(false);
 
   const selectedRec = recommendations.find((r) => r.id === selectedId) || recommendations[0];
 
   const handleRecordDecision = async (action: 'ACCEPT' | 'DEFER' | 'REJECT' | 'OVERRIDE') => {
     if (!selectedRec) return;
-
     let finalReason = justification.trim();
-    if (!finalReason) {
-      finalReason = `${action} decision executed by authorized ${userRole} persona in decision-support console.`;
-    }
-
-    if (finalReason.length < 15) {
-      finalReason = `${finalReason} (Validated for operational decision log).`;
-    }
+    if (!finalReason) finalReason = `${action} decision executed by authorized ${userRole} persona in decision-support console.`;
+    if (finalReason.length < 15) finalReason = `${finalReason} (Validated for operational decision log).`;
 
     setActionLoading(true);
     setErrorMsg(null);
     try {
-      await recommendationsApi.recordDecision(selectedRec.id, {
-        action,
-        reason: finalReason,
-      });
+      await recommendationsApi.recordDecision(selectedRec.id, { action, reason: finalReason });
       setJustification('');
       setShowOverrideModal(false);
       onRefresh();
@@ -86,86 +68,79 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* View Title */}
-      <div className="flex items-center justify-between bg-[#111827] border border-gray-800 rounded-xl p-5 shadow-lg">
+      {/* Section Header */}
+      <div className="rounded-panel p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+           style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <FileCheck2 className="w-6 h-6 text-blue-400" /> Decision Support Engine
+          <h2 className="text-section flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
+            <FileCheck2 className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
+            Maintenance Decision Queue
           </h2>
-          <p className="text-xs text-gray-400 font-mono mt-1">
-            Immutable versioned recommendations &bull; Priority Score = f(Risk, RUL, Spares, Slots, Mission Urgency)
+          <p className="text-[12px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
+            Priority = f(Risk, RUL, Spares, Facility Capacity, Mission Urgency)
           </p>
         </div>
-
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-gray-400">Human-in-the-Loop Enforced:</span>
-          <span className="px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800 text-xs font-mono font-bold">
-            REQUIRES AUTHORIZED DECISION
+          <span className="text-[11px] font-medium" style={{ color: 'var(--color-text-muted)' }}>Human-in-the-Loop:</span>
+          <span className="px-2 py-0.5 rounded text-[11px] font-semibold"
+                style={{ backgroundColor: 'var(--color-ok)' + '20', color: 'var(--color-ok-text)', border: '1px solid var(--color-ok)40' }}>
+            ENFORCED
           </span>
         </div>
       </div>
 
-      {/* Main Grid: Left Queue, Right Action & Passport */}
+      {/* Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Recommendation Queue */}
+        {/* Left: Queue */}
         <div className="lg:col-span-5 space-y-3">
-          <h3 className="text-xs font-mono uppercase text-gray-400 px-1">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider px-1"
+              style={{ color: 'var(--color-text-muted)' }}>
             Prioritized Recommendations ({recommendations.length})
           </h3>
-
-          <div className="space-y-3">
+          <div className="space-y-2">
             {recommendations.map((rec) => {
               const isSelected = rec.id === selectedRec?.id;
-
               return (
-                <div
-                  key={rec.id}
-                  onClick={() => {
-                    setSelectedId(rec.id);
-                    setErrorMsg(null);
-                  }}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-blue-950/40 border-blue-500 shadow-xl'
-                      : 'bg-[#111827] border-gray-800 hover:border-gray-700'
-                  }`}
-                >
+                <div key={rec.id}
+                     onClick={() => { setSelectedId(rec.id); setErrorMsg(null); }}
+                     className="p-4 rounded-panel cursor-pointer"
+                     style={{
+                       backgroundColor: isSelected ? 'var(--color-bg-hover)' : 'var(--color-bg-panel)',
+                       border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                     }}>
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-white text-base">{rec.aircraft_id}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                          rec.status === 'ACCEPTED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
-                          rec.status === 'OPEN' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
-                          rec.status === 'OVERRIDDEN' ? 'bg-purple-950 text-purple-400 border border-purple-800' :
-                          'bg-red-950 text-red-400 border border-red-800'
-                        }`}>
+                        <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{rec.aircraft_id}</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
+                              style={{
+                                backgroundColor: rec.status === 'ACCEPTED' ? 'var(--color-ok)20' : rec.status === 'OPEN' || rec.status === 'PENDING' ? 'var(--color-caution)20' : 'var(--color-critical)20',
+                                color: rec.status === 'ACCEPTED' ? 'var(--color-ok-text)' : rec.status === 'OPEN' || rec.status === 'PENDING' ? 'var(--color-caution-text)' : 'var(--color-critical-text)',
+                                border: `1px solid ${rec.status === 'ACCEPTED' ? 'var(--color-ok)' : rec.status === 'OPEN' || rec.status === 'PENDING' ? 'var(--color-caution)' : 'var(--color-critical)'}40`,
+                              }}>
                           {rec.status}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-300 font-medium mt-1">{rec.component_id}</p>
+                      <p className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{rec.component_id}</p>
                     </div>
-
                     <div className="text-right">
-                      <span className="text-xs font-mono text-gray-400 block">Priority Score</span>
-                      <span className="text-lg font-extrabold text-blue-400 font-mono">
+                      <span className="text-[10px] block" style={{ color: 'var(--color-text-muted)' }}>Priority</span>
+                      <span className="text-lg font-bold tabular-nums" style={{ color: 'var(--color-primary)' }}>
                         {rec.priority_score ? rec.priority_score.toFixed(1) : 'N/A'}
                       </span>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-800/80 text-xs font-mono">
-                    <div className="flex items-center gap-1.5 text-gray-400">
-                      <Package className="w-3.5 h-3.5 text-gray-500" />
-                      Part: <span className={rec.part_status === 'READY' ? 'text-emerald-400' : 'text-red-400'}>
+                  <div className="grid grid-cols-2 gap-2 mt-3 pt-3 text-[11px]"
+                       style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
+                    <div className="flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                      <Package className="w-3 h-3" />
+                      Part: <span style={{ color: rec.part_status === 'READY' ? 'var(--color-ok-text)' : 'var(--color-critical-text)' }}>
                         {rec.part_status || 'READY'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-gray-400">
-                      <Building2 className="w-3.5 h-3.5 text-gray-500" />
-                      Slot: <span className="text-emerald-400">
-                        {rec.facility_id || 'Depot 1'}
-                      </span>
+                    <div className="flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                      <Building2 className="w-3 h-3" />
+                      Slot: <span style={{ color: 'var(--color-ok-text)' }}>{rec.facility_id || 'Depot 1'}</span>
                     </div>
                   </div>
                 </div>
@@ -174,197 +149,172 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           </div>
         </div>
 
-        {/* Right: Selected Recommendation Details & Actions */}
+        {/* Right: Detail Panel */}
         {selectedRec && (
-          <div className="lg:col-span-7 bg-[#111827] border border-gray-800 rounded-xl p-6 space-y-6 shadow-xl">
-            {/* Recommendation Header */}
-            <div className="flex items-start justify-between border-b border-gray-800 pb-4">
-              <div>
-                <span className="text-xs font-mono text-blue-400 uppercase tracking-wider block">
-                  Action Recommendation #{selectedRec.id.slice(0, 8)}
-                </span>
-                <h3 className="text-xl font-bold text-white mt-0.5">
-                  {selectedRec.recommended_action} &bull; <span className="font-mono text-gray-300">{selectedRec.aircraft_id}</span>
-                </h3>
-                <p className="text-xs text-gray-400 font-mono mt-1">
-                  Target Component: {selectedRec.component_id} &bull; Priority Tier: <span className="text-amber-400 font-bold uppercase">{selectedRec.priority_tier}</span>
-                </p>
-              </div>
-
-              <div className="text-right">
-                <span className="px-3 py-1 rounded-lg bg-gray-900 border border-gray-700 text-xs font-mono text-gray-300">
-                  Priority: {selectedRec.priority_score ? selectedRec.priority_score.toFixed(1) : 'N/A'} / 100
-                </span>
-              </div>
-            </div>
-
-            {/* Risk & Resource Badges */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-              <div className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-                <span className="text-gray-400 block text-[11px]">Failure Risk</span>
-                <span className="text-lg font-bold text-red-400 mt-0.5 block">
-                  {selectedRec.risk_score ? `${(selectedRec.risk_score * 100).toFixed(1)}%` : 'N/A'}
-                </span>
-              </div>
-              <div className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-                <span className="text-gray-400 block text-[11px]">Est. RUL (Cycles)</span>
-                <span className="text-lg font-bold text-white mt-0.5 block">
-                  {selectedRec.rul_q50 ?? 'N/A'} cyc
-                </span>
-              </div>
-              <div className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-                <span className="text-gray-400 block text-[11px]">Spare Status</span>
-                <span className={`text-sm font-bold mt-1 block ${selectedRec.part_status === 'READY' ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {selectedRec.part_status || 'READY'}
-                </span>
-              </div>
-              <div className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-                <span className="text-gray-400 block text-[11px]">Facility Bay</span>
-                <span className="text-sm font-bold text-emerald-400 mt-1 block">
-                  {selectedRec.facility_id || 'Hangar Bay 1'}
+          <div className="lg:col-span-7 rounded-panel p-6 space-y-6"
+               style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
+            {/* Header */}
+            <div className="pb-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider block"
+                        style={{ color: 'var(--color-primary)' }}>
+                    AI Recommendation #{selectedRec.id.slice(0, 8)}
+                  </span>
+                  <h3 className="text-[16px] font-bold mt-0.5" style={{ color: 'var(--color-text-primary)' }}>
+                    {selectedRec.recommended_action}
+                  </h3>
+                  <p className="text-[12px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                    Aircraft: {selectedRec.aircraft_id} · Component: {selectedRec.component_id} · <PriorityBadge tier={selectedRec.priority_tier} />
+                  </p>
+                </div>
+                <span className="px-2 py-1 rounded text-[11px] font-semibold"
+                      style={{ backgroundColor: 'var(--color-bg-inset)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)' }}>
+                  {selectedRec.priority_score ? selectedRec.priority_score.toFixed(1) : 'N/A'} / 100
                 </span>
               </div>
             </div>
 
-            {/* Error Banner */}
+            {/* Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Failure Risk', value: selectedRec.risk_score ? `${(selectedRec.risk_score * 100).toFixed(1)}%` : 'N/A', color: 'var(--color-critical-text)' },
+                { label: 'Est. RUL', value: selectedRec.rul_q50 ? `${selectedRec.rul_q50} cyc` : 'N/A' },
+                { label: 'Spare Status', value: selectedRec.part_status || 'READY', color: selectedRec.part_status === 'READY' ? 'var(--color-ok-text)' : 'var(--color-critical-text)' },
+                { label: 'Facility', value: selectedRec.facility_id || 'Bay 1', color: 'var(--color-ok-text)' },
+              ].map((m, i) => (
+                <div key={i} className="p-3 rounded-panel"
+                     style={{ backgroundColor: 'var(--color-bg-raised)', border: '1px solid var(--color-border-subtle)' }}>
+                  <span className="text-[10px] font-medium block" style={{ color: 'var(--color-text-muted)' }}>{m.label}</span>
+                  <span className="text-[16px] font-bold block mt-0.5"
+                        style={{ color: m.color || 'var(--color-text-primary)' }}>{m.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Error */}
             {errorMsg && (
-              <div className="bg-red-950/80 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-xs font-mono flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                <span>{errorMsg}</span>
+              <div className="p-3 rounded-panel text-[12px] flex items-center gap-2"
+                   style={{ backgroundColor: 'var(--color-bg-inset)', color: 'var(--color-critical-text)', border: '1px solid var(--color-critical)' }}>
+                <AlertTriangle className="w-4 h-4 shrink-0" /> {errorMsg}
               </div>
             )}
 
             {/* Action Panel */}
-            {selectedRec.status === 'OPEN' || selectedRec.status === 'PENDING' ? (
-              <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-5 space-y-4">
-                <h4 className="text-xs font-mono uppercase text-gray-300 font-bold flex items-center gap-2">
-                  <Wrench className="w-4 h-4 text-blue-400" /> Record Official Decision
-                </h4>
-
-                <div>
-                  <label className="text-xs font-mono text-gray-400 block mb-1">
-                    Decision Justification / Operational Rationale (Min 15 characters)
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Enter detailed operational reason, mission priority, or maintenance slot notes..."
-                    value={justification}
-                    onChange={(e) => setJustification(e.target.value)}
-                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
-                  />
+            {(selectedRec.status === 'OPEN' || selectedRec.status === 'PENDING') ? (
+              <div className="p-5 rounded-panel space-y-4"
+                   style={{ backgroundColor: 'var(--color-bg-raised)', border: '1px solid var(--color-border-subtle)' }}>
+                <div className="flex items-center gap-2 pb-2" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
+                  <Wrench className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
+                  <h4 className="text-[12px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-secondary)' }}>
+                    Record Decision
+                  </h4>
+                  <span className="text-[10px] ml-auto" style={{ color: 'var(--color-text-muted)' }}>AI RECOMMENDS · HUMAN DECIDES</span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    disabled={actionLoading}
-                    onClick={() => handleRecordDecision('ACCEPT')}
-                    className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 shadow-md"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> Accept & Schedule
-                  </button>
+                <div>
+                  <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--color-text-muted)' }}>
+                    Operational Rationale (min 15 characters)
+                  </label>
+                  <textarea rows={3} placeholder="Enter operational rationale for decision..."
+                    value={justification} onChange={(e) => setJustification(e.target.value)}
+                    className="w-full p-3 rounded-panel text-[13px] outline-none resize-none"
+                    style={{ backgroundColor: 'var(--color-bg-inset)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }} />
+                </div>
 
-                  <button
-                    disabled={actionLoading}
-                    onClick={() => handleRecordDecision('DEFER')}
-                    className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 shadow-md"
-                  >
-                    <Clock className="w-4 h-4" /> Defer Maintenance
+                <div className="flex flex-wrap items-center gap-2">
+                  <button disabled={actionLoading} onClick={() => handleRecordDecision('ACCEPT')}
+                    className="px-4 py-2 rounded-panel text-[12px] font-semibold flex items-center gap-1.5 text-white disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--color-ok)' }}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Accept
                   </button>
-
-                  <button
-                    disabled={actionLoading}
-                    onClick={() => handleRecordDecision('REJECT')}
-                    className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 shadow-md"
-                  >
-                    <XCircle className="w-4 h-4" /> Reject Recommendation
+                  <button disabled={actionLoading} onClick={() => handleRecordDecision('DEFER')}
+                    className="px-4 py-2 rounded-panel text-[12px] font-semibold flex items-center gap-1.5 text-white disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--color-caution)' }}>
+                    <Clock className="w-3.5 h-3.5" /> Defer
                   </button>
-
-                  <button
-                    disabled={actionLoading}
-                    onClick={() => setShowOverrideModal(true)}
-                    className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 shadow-md ml-auto"
-                  >
-                    <ShieldAlert className="w-4 h-4" /> 2-Person Override
+                  <button disabled={actionLoading} onClick={() => handleRecordDecision('REJECT')}
+                    className="px-4 py-2 rounded-panel text-[12px] font-semibold flex items-center gap-1.5 text-white disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--color-critical)' }}>
+                    <XCircle className="w-3.5 h-3.5" /> Reject
+                  </button>
+                  <button disabled={actionLoading} onClick={() => setShowOverrideModal(true)}
+                    className="px-4 py-2 rounded-panel text-[12px] font-semibold flex items-center gap-1.5 text-white disabled:opacity-50 ml-auto"
+                    style={{ backgroundColor: 'var(--color-simulation)' }}>
+                    <ShieldAlert className="w-3.5 h-3.5" /> Override
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 text-xs font-mono space-y-2">
-                <div className="flex items-center justify-between text-gray-300">
-                  <span>Recorded Status: <strong className="text-emerald-400 font-bold">{selectedRec.status}</strong></span>
-                  <span className="text-gray-400">Audited & Hash-Chained</span>
+              <div className="p-4 rounded-panel text-[12px]"
+                   style={{ backgroundColor: 'var(--color-bg-raised)', border: '1px solid var(--color-border-subtle)' }}>
+                <div className="flex items-center justify-between" style={{ color: 'var(--color-text-secondary)' }}>
+                  <span>Status: <strong style={{ color: 'var(--color-ok-text)' }}>{selectedRec.status}</strong></span>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Audited & Hash-Chained</span>
                 </div>
               </div>
             )}
 
-            {/* Cryptographic Evidence Passport */}
-            <div className="border-t border-gray-800 pt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-gray-400 flex items-center gap-2">
-                  <FileCode className="w-4 h-4 text-emerald-400" /> Evidence Passport Cryptographic Verification
+            {/* Evidence Passport */}
+            <div className="pt-4" style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-medium flex items-center gap-2" style={{ color: 'var(--color-text-muted)' }}>
+                  <FileCode className="w-3.5 h-3.5" style={{ color: 'var(--color-ok-text)' }} />
+                  Evidence Passport
                 </span>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
-                  Ed25519 Signed & Verified
+                <span className="text-[10px] px-1.5 py-0.5 rounded"
+                      style={{ backgroundColor: 'var(--color-ok)20', color: 'var(--color-ok-text)', border: '1px solid var(--color-ok)40' }}>
+                  Ed25519 Verified
                 </span>
               </div>
-
-              <div className="mt-2 bg-[#0B0F19] p-3 rounded-lg border border-gray-800 font-mono text-[11px] text-gray-300 space-y-1">
-                <div>Passport ID: <span className="text-blue-400">{selectedRec.evidence_passport_id || `ep-sha256-${selectedRec.id.slice(0, 8)}`}</span></div>
-                <div>Prediction ID: <span className="text-purple-400">{selectedRec.id}</span></div>
-                <div>Reason Codes: <span className="text-amber-400">{(selectedRec.reason_codes || []).join(', ') || 'RUL_URGENT'}</span></div>
+              <div className="p-3 rounded-panel text-[11px] space-y-1"
+                   style={{ backgroundColor: 'var(--color-bg-inset)', border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-secondary)' }}>
+                <div>Passport ID: <span style={{ color: 'var(--color-primary)' }}>{selectedRec.evidence_passport_id || `ep-sha256-${selectedRec.id.slice(0, 8)}`}</span></div>
+                <div>Prediction ID: <span style={{ color: 'var(--color-simulation)' }}>{selectedRec.id}</span></div>
+                <div>Reason Codes: <span style={{ color: 'var(--color-caution-text)' }}>{(selectedRec.reason_codes || []).join(', ') || 'RUL_URGENT'}</span></div>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── 2-Person Override Modal ──────────────────────────── */}
+      {/* Override Modal */}
       {showOverrideModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-purple-900 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-              <div className="flex items-center gap-2 text-purple-400">
-                <ShieldAlert className="w-6 h-6" />
-                <h3 className="text-lg font-bold text-white">Two-Person Override</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(8,12,18,0.85)' }}>
+          <div className="max-w-md w-full p-6 rounded-panel space-y-5"
+               style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-simulation)', boxShadow: 'var(--shadow-modal)' }}>
+            <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
+              <div className="flex items-center gap-2" style={{ color: 'var(--color-simulation)' }}>
+                <ShieldAlert className="w-5 h-5" />
+                <h3 className="text-[16px] font-bold" style={{ color: 'var(--color-text-primary)' }}>Two-Person Override</h3>
               </div>
-              <button onClick={() => setShowOverrideModal(false)} className="text-gray-400 hover:text-white">
+              <button onClick={() => setShowOverrideModal(false)} style={{ color: 'var(--color-text-muted)' }}>
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
-
-            <p className="text-xs text-gray-300">
-              Overriding automated risk assessments requires dual authorization and a mandatory detailed rationale for the immutable audit log.
+            <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>
+              Overriding automated risk assessments requires dual authorization and a mandatory rationale for the immutable audit log.
             </p>
-
-            <div className="space-y-4 text-xs font-mono">
-              <div>
-                <label className="text-gray-400 block mb-1">Mandatory Operational Rationale (Min 15 chars)</label>
-                <textarea
-                  rows={3}
-                  placeholder="Enter explicit operational rationale for overriding risk assessment..."
-                  value={justification}
-                  onChange={(e) => setJustification(e.target.value)}
-                  className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white font-mono"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowOverrideModal(false)}
-                  className="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={actionLoading}
-                  onClick={() => handleRecordDecision('OVERRIDE')}
-                  className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center gap-2"
-                >
-                  <UserCheck className="w-4 h-4" /> Authenticate & Override
-                </button>
-              </div>
+            <div>
+              <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--color-text-muted)' }}>
+                Mandatory Operational Rationale (min 15 chars)
+              </label>
+              <textarea rows={3} placeholder="Enter operational rationale for overriding risk assessment..."
+                value={justification} onChange={(e) => setJustification(e.target.value)}
+                className="w-full p-2 rounded-panel text-[12px] outline-none resize-none"
+                style={{ backgroundColor: 'var(--color-bg-inset)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }} />
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button onClick={() => setShowOverrideModal(false)}
+                className="px-4 py-2 rounded-panel text-[12px]"
+                style={{ backgroundColor: 'var(--color-bg-raised)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
+                Cancel
+              </button>
+              <button disabled={actionLoading} onClick={() => handleRecordDecision('OVERRIDE')}
+                className="px-4 py-2 rounded-panel text-[12px] font-bold flex items-center gap-2 text-white disabled:opacity-50"
+                style={{ backgroundColor: 'var(--color-simulation)' }}>
+                <UserCheck className="w-4 h-4" /> Authenticate & Override
+              </button>
             </div>
           </div>
         </div>

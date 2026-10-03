@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Lock, ShieldCheck, KeyRound, Check } from 'lucide-react';
+import { X, Lock, Shield, User, KeyRound, Loader2 } from 'lucide-react';
 import { authApi } from '../api/client';
 
 interface LoginModalProps {
@@ -7,93 +7,154 @@ interface LoginModalProps {
   onLoginSuccess: (user: { username: string; role: string }) => void;
 }
 
-const DEMO_ROLES = [
-  { username: 'commander1', role: 'commander', label: 'Air Base Commander', desc: 'Full fleet visibility, operational release approval' },
-  { username: 'supervisor1', role: 'supervisor', label: 'Maintenance Supervisor', desc: 'Accept/Defer recommendations, two-person override' },
-  { username: 'engineer1', role: 'engineer', label: 'Flight Test Engineer', desc: 'Telemetry analysis, sensor diagnostics' },
-  { username: 'logistics1', role: 'logistics', label: 'Supply Chain Officer', desc: 'Spares inventory, lead-time management' },
-  { username: 'auditor1', role: 'auditor', label: 'Security Auditor', desc: 'Cryptographic hash chain & compliance verification' },
-];
-
 export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
-  const [selectedRole, setSelectedRole] = useState(DEMO_ROLES[1]);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async (username: string, role: string) => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username || !password) {
+      setError('Please enter both username and password.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const data = await authApi.login(username, role);
+      const data = await authApi.login(username, password);
       onLoginSuccess({ username: data.user.username, role: data.user.role });
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
+  const fillDemoCreds = (user: string) => {
+    setUsername(user);
+    setPassword(`Demo${user}Pass123!`);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#111827] border border-gray-800 rounded-2xl max-w-lg w-full p-6 space-y-6 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-blue-400" />
-            <h3 className="text-lg font-bold text-white">Select Persona & Authenticate</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style={{ backgroundColor: 'rgba(8,12,18,0.85)' }}>
+      <div className="w-full max-w-lg rounded-panel overflow-hidden"
+           style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-modal)' }}>
+        
+        {/* Top accent */}
+        <div className="h-1" style={{ backgroundColor: 'var(--color-primary-strong)' }} />
+
+        <div className="p-8">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Shield className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
+                <span className="text-[11px] font-semibold uppercase tracking-wider"
+                      style={{ color: 'var(--color-text-muted)' }}>SIH26249</span>
+              </div>
+              <h2 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                AERIS
+              </h2>
+              <p className="text-[13px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                Aircraft Reliability & Intelligence System
+              </p>
+            </div>
+            <button onClick={onClose} className="p-1 rounded"
+                    style={{ color: 'var(--color-text-muted)' }}>
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
-        <p className="text-xs text-gray-300">
-          AERIS implements Role-Based Access Control (RBAC). Select a demo persona to authenticate and test server-side permission checks.
-        </p>
+          {/* Error */}
+          {error && (
+            <div className="p-3 rounded-panel text-[13px] mb-6 flex items-start gap-2"
+                 style={{ backgroundColor: 'var(--color-bg-inset)', color: 'var(--color-critical-text)', border: '1px solid var(--color-critical)' }}>
+              <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        {error && (
-          <div className="bg-red-950/80 border border-red-800 text-red-300 p-3 rounded-lg text-xs font-mono">
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-2">
-          {DEMO_ROLES.map((r) => {
-            const isSelected = selectedRole.username === r.username;
-            return (
-              <button
-                key={r.username}
-                onClick={() => {
-                  setSelectedRole(r);
-                  handleLogin(r.username, `Demo${r.username}Pass123!`);
-                }}
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label className="text-[13px] font-medium flex items-center gap-2 mb-1.5"
+                     style={{ color: 'var(--color-text-secondary)' }}>
+                <User className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} /> Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 disabled={loading}
-                className={`w-full p-3.5 rounded-xl border text-left transition-all flex items-center justify-between ${
-                  isSelected
-                    ? 'bg-blue-950/50 border-blue-500 text-white shadow-lg'
-                    : 'bg-gray-900/60 border-gray-800 text-gray-300 hover:bg-gray-800'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white">{r.label}</span>
-                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-blue-900/60 text-blue-300">
-                      {r.role}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-400 font-mono mt-0.5">{r.desc}</p>
-                </div>
+                className="w-full px-3 py-2.5 rounded-panel text-[14px] outline-none"
+                style={{
+                  backgroundColor: 'var(--color-bg-inset)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-primary)',
+                }}
+                placeholder="e.g. commander1"
+              />
+            </div>
 
-                <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">
-                  <Check className="w-3.5 h-3.5" />
-                </div>
-              </button>
-            );
-          })}
-        </div>
+            <div>
+              <label className="text-[13px] font-medium flex items-center gap-2 mb-1.5"
+                     style={{ color: 'var(--color-text-secondary)' }}>
+                <KeyRound className="w-4 h-4" style={{ color: 'var(--color-text-muted)' }} /> Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                className="w-full px-3 py-2.5 rounded-panel text-[14px] outline-none"
+                style={{
+                  backgroundColor: 'var(--color-bg-inset)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-primary)',
+                }}
+                placeholder="••••••••"
+              />
+            </div>
 
-        <div className="text-[11px] text-gray-500 font-mono text-center pt-2 border-t border-gray-800">
-          Argon2id password hashing &bull; Session cookies with HttpOnly, SameSite=Strict, __Host- prefix
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 rounded-panel text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ backgroundColor: 'var(--color-primary-strong)' }}
+            >
+              {loading ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Authenticating...</>
+              ) : (
+                'Sign In'
+              )}
+            </button>
+          </form>
+
+          {/* Demo Accounts */}
+          <div className="mt-6 pt-5" style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
+            <p className="text-[11px] font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>
+              Demo Accounts (click to fill):
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {['commander1', 'supervisor1', 'engineer1', 'logistics1', 'auditor1'].map((name) => (
+                <button key={name} onClick={() => fillDemoCreds(name)} type="button"
+                  className="text-[11px] px-2 py-1 rounded font-medium capitalize"
+                  style={{ backgroundColor: 'var(--color-bg-inset)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)' }}>
+                  {name.replace('1', '')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Safety Statement */}
+          <p className="text-[10px] text-center mt-6 leading-relaxed"
+             style={{ color: 'var(--color-text-muted)' }}>
+            This system is a maintenance decision-support prototype. Predictions are not airworthiness or release-to-service decisions and are not validated for operational aircraft.
+          </p>
         </div>
       </div>
     </div>

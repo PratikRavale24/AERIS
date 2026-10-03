@@ -1,122 +1,120 @@
 import React from 'react';
-import { X, Cpu, BarChart3, ShieldCheck, CheckCircle2, TrendingUp, HelpCircle } from 'lucide-react';
+import { X, Cpu, BarChart3, ShieldCheck, CheckCircle2, Info } from 'lucide-react';
 
 interface ModelCardsModalProps {
   onClose: () => void;
 }
 
+const MetricTile: React.FC<{label: string; value: string; color?: string}> = ({label, value, color}) => (
+  <div className="p-3 rounded-panel"
+       style={{ backgroundColor: 'var(--color-bg-raised)', border: '1px solid var(--color-border-subtle)' }}>
+    <span className="text-[10px] font-medium block" style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+    <span className="text-lg font-bold block mt-0.5 tabular-nums" style={{ color: color || 'var(--color-text-primary)' }}>{value}</span>
+  </div>
+);
+
 export const ModelCardsModal: React.FC<ModelCardsModalProps> = ({ onClose }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#111827] border border-gray-800 rounded-2xl max-w-3xl w-full p-6 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style={{ backgroundColor: 'rgba(8,12,18,0.85)' }}>
+      <div className="max-w-3xl w-full rounded-panel p-6 space-y-6 max-h-[90vh] overflow-y-auto"
+           style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-modal)' }}>
+        
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
           <div className="flex items-center gap-2">
-            <Cpu className="w-6 h-6 text-blue-400" />
+            <Cpu className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
             <div>
-              <h3 className="text-lg font-bold text-white">ML Model Cards & Baseline Verification</h3>
-              <p className="text-xs text-gray-400 font-mono">HMAC-signed model artifacts &bull; Calibrated probabilities &bull; Conformal bounds</p>
+              <h3 className="text-[16px] font-bold" style={{ color: 'var(--color-text-primary)' }}>ML Model Cards</h3>
+              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                HMAC-signed artifacts · Calibrated probabilities · Conformal bounds
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
+          <button onClick={onClose} style={{ color: 'var(--color-text-muted)' }}><X className="w-5 h-5" /></button>
         </div>
 
-        {/* Model 1: LightGBM Risk Classifier */}
-        <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
+        {/* AI Advisory Notice */}
+        <div className="p-3 rounded-panel text-[11px] flex items-start gap-2"
+             style={{ backgroundColor: 'var(--color-bg-inset)', color: 'var(--color-caution-text)', border: '1px solid var(--color-caution)40' }}>
+          <Info className="w-4 h-4 shrink-0 mt-0.5" />
+          AI OUTPUT — ADVISORY. Model predictions are decision-support inputs, not airworthiness determinations.
+        </div>
+
+        {/* Model 1 */}
+        <div className="rounded-panel p-5 space-y-4"
+             style={{ backgroundColor: 'var(--color-bg-raised)', border: '1px solid var(--color-border-subtle)' }}>
+          <div className="flex items-start justify-between">
             <div>
-              <h4 className="font-bold text-white text-base">Engine / Hydraulics / Avionics Risk Classifier</h4>
-              <p className="text-xs text-gray-400 font-mono">Algorithm: LightGBM (Platt Calibrated) &bull; Input Window: 10/30 rolling cycles</p>
+              <h4 className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>Risk Classifier</h4>
+              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>LightGBM (Platt Calibrated) · 10/30 rolling cycles</p>
             </div>
-            <span className="px-2.5 py-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs font-mono font-bold">
-              VERIFIED HMAC-SHA256
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold"
+                  style={{ backgroundColor: 'var(--color-ok)20', color: 'var(--color-ok-text)', border: '1px solid var(--color-ok)40' }}>
+              <ShieldCheck className="w-3 h-3 inline mr-1" />HMAC VERIFIED
             </span>
           </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-            <div className="bg-[#111827] border border-gray-800 rounded-lg p-3">
-              <span className="text-gray-400 block text-[11px]">ROC-AUC Score</span>
-              <span className="text-lg font-bold text-emerald-400 mt-0.5 block">0.942</span>
-            </div>
-            <div className="bg-[#111827] border border-gray-800 rounded-lg p-3">
-              <span className="text-gray-400 block text-[11px]">Precision @ 10c</span>
-              <span className="text-lg font-bold text-white mt-0.5 block">0.895</span>
-            </div>
-            <div className="bg-[#111827] border border-gray-800 rounded-lg p-3">
-              <span className="text-gray-400 block text-[11px]">Recall @ 10c</span>
-              <span className="text-lg font-bold text-white mt-0.5 block">0.918</span>
-            </div>
-            <div className="bg-[#111827] border border-gray-800 rounded-lg p-3">
-              <span className="text-gray-400 block text-[11px]">Brier Score</span>
-              <span className="text-lg font-bold text-blue-400 mt-0.5 block">0.038</span>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <MetricTile label="ROC-AUC" value="0.942" color="var(--color-ok-text)" />
+            <MetricTile label="Precision @10c" value="0.895" />
+            <MetricTile label="Recall @10c" value="0.918" />
+            <MetricTile label="Brier Score" value="0.038" color="var(--color-primary)" />
           </div>
         </div>
 
-        {/* Model 2: LightGBM RUL Regressor with Conformal Intervals */}
-        <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
+        {/* Model 2 */}
+        <div className="rounded-panel p-5 space-y-4"
+             style={{ backgroundColor: 'var(--color-bg-raised)', border: '1px solid var(--color-border-subtle)' }}>
+          <div className="flex items-start justify-between">
             <div>
-              <h4 className="font-bold text-white text-base">Remaining Useful Life (RUL) Regressor</h4>
-              <p className="text-xs text-gray-400 font-mono">Algorithm: LightGBM Regressor + Quantile Conformal Prediction Interval</p>
+              <h4 className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>RUL Regressor</h4>
+              <p className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>LightGBM + Quantile Conformal Prediction</p>
             </div>
-            <span className="px-2.5 py-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs font-mono font-bold">
-              VERIFIED HMAC-SHA256
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold"
+                  style={{ backgroundColor: 'var(--color-ok)20', color: 'var(--color-ok-text)', border: '1px solid var(--color-ok)40' }}>
+              <ShieldCheck className="w-3 h-3 inline mr-1" />HMAC VERIFIED
             </span>
           </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-            <div className="bg-[#111827] border border-gray-800 rounded-lg p-3">
-              <span className="text-gray-400 block text-[11px]">RUL Mean Absolute Error</span>
-              <span className="text-lg font-bold text-white mt-0.5 block">4.21 <span className="text-xs text-gray-400">cyc</span></span>
-            </div>
-            <div className="bg-[#111827] border border-gray-800 rounded-lg p-3">
-              <span className="text-gray-400 block text-[11px]">RMSE</span>
-              <span className="text-lg font-bold text-white mt-0.5 block">5.89 <span className="text-xs text-gray-400">cyc</span></span>
-            </div>
-            <div className="bg-[#111827] border border-gray-800 rounded-lg p-3">
-              <span className="text-gray-400 block text-[11px]">Conformal Coverage Target</span>
-              <span className="text-lg font-bold text-purple-400 mt-0.5 block">80.0%</span>
-            </div>
-            <div className="bg-[#111827] border border-gray-800 rounded-lg p-3">
-              <span className="text-gray-400 block text-[11px]">Empirical Coverage</span>
-              <span className="text-lg font-bold text-emerald-400 mt-0.5 block">81.4%</span>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <MetricTile label="MAE" value="4.21 cyc" />
+            <MetricTile label="RMSE" value="5.89 cyc" />
+            <MetricTile label="Coverage Target" value="80.0%" color="var(--color-simulation)" />
+            <MetricTile label="Empirical Coverage" value="81.4%" color="var(--color-ok-text)" />
           </div>
         </div>
 
-        {/* Model 3: Baseline Comparison */}
-        <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-5 space-y-4">
-          <h4 className="font-bold text-white text-base flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-amber-400" /> Comparison Against Static-Threshold Baseline
+        {/* Baseline Comparison */}
+        <div className="rounded-panel p-5 space-y-4"
+             style={{ backgroundColor: 'var(--color-bg-raised)', border: '1px solid var(--color-border-subtle)' }}>
+          <h4 className="font-semibold flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
+            <BarChart3 className="w-4 h-4" style={{ color: 'var(--color-caution-text)' }} />
+            Comparison vs Static-Threshold Baseline
           </h4>
-          <p className="text-xs text-gray-300">
-            AERIS ML models are benchmarked against traditional OEM fixed-threshold rules (e.g. alert when EGT &gt; 680°C or Vibration &gt; 0.50 RMS).
+          <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>
+            AERIS ML models benchmarked against traditional OEM fixed-threshold rules.
           </p>
-
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-[#111827] text-gray-400 border-b border-gray-800">
-                <tr>
-                  <th className="p-2.5">Model / Method</th>
-                  <th className="p-2.5">Lead Time Notice</th>
-                  <th className="p-2.5">False Positive Rate</th>
-                  <th className="p-2.5 text-right">F1 Score</th>
+            <table className="w-full text-left text-[13px]">
+              <thead>
+                <tr style={{ backgroundColor: 'var(--color-bg-panel)' }}>
+                  {['Model', 'Lead Time', 'False Positive', 'F1'].map(h => (
+                    <th key={h} className="p-2.5 font-semibold text-[11px] uppercase tracking-wider"
+                        style={{ color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border-subtle)' }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800 text-gray-300">
-                <tr className="bg-blue-950/20">
-                  <td className="p-2.5 font-bold text-blue-400">AERIS LightGBM + IsolationForest</td>
-                  <td className="p-2.5 font-bold text-white">14.2 cycles avg</td>
-                  <td className="p-2.5 text-emerald-400 font-bold">2.4%</td>
-                  <td className="p-2.5 text-right font-bold text-emerald-400">0.906</td>
+              <tbody>
+                <tr style={{ backgroundColor: 'var(--color-bg-hover)', borderBottom: '1px solid var(--color-border-subtle)' }}>
+                  <td className="p-2.5 font-semibold" style={{ color: 'var(--color-primary)' }}>AERIS LightGBM + IsolationForest</td>
+                  <td className="p-2.5 font-semibold" style={{ color: 'var(--color-text-primary)' }}>14.2 cyc avg</td>
+                  <td className="p-2.5 font-semibold" style={{ color: 'var(--color-ok-text)' }}>2.4%</td>
+                  <td className="p-2.5 font-semibold" style={{ color: 'var(--color-ok-text)' }}>0.906</td>
                 </tr>
                 <tr>
-                  <td className="p-2.5 text-gray-400">Static OEM Threshold Rule Baseline</td>
-                  <td className="p-2.5 text-gray-400">3.1 cycles avg</td>
-                  <td className="p-2.5 text-red-400">18.6%</td>
-                  <td className="p-2.5 text-right text-amber-400">0.612</td>
+                  <td className="p-2.5" style={{ color: 'var(--color-text-muted)' }}>Static OEM Threshold</td>
+                  <td className="p-2.5" style={{ color: 'var(--color-text-muted)' }}>3.1 cyc avg</td>
+                  <td className="p-2.5" style={{ color: 'var(--color-critical-text)' }}>18.6%</td>
+                  <td className="p-2.5" style={{ color: 'var(--color-caution-text)' }}>0.612</td>
                 </tr>
               </tbody>
             </table>

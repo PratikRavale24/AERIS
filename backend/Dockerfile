@@ -38,6 +38,9 @@ COPY tests/ tests/
 # Create necessary directories
 RUN mkdir -p /app/ml_artifacts && chown -R aeris:aeris /app
 
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && chown aeris:aeris /app/entrypoint.sh
+
 USER aeris
 
 # Health check
@@ -46,4 +49,5 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=3 --start-period=30s \
 
 EXPOSE 8000
 
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--no-access-log"]

@@ -1,0 +1,92 @@
+/* ═══════════════════════════════════════════════════════════════
+   AERIS Design Token System
+   SIH26249 — AERIS - Aircraft Reliability & Intelligence System
+   Defence-grade colour palette for NIGHT and DAY themes
+   ═══════════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root,
+  html[data-theme="night"] {
+    /* Surfaces */
+    --color-bg-canvas: #0C1219;
+    --color-bg-panel: #131B24;
+    --color-bg-raised: #18232D;
+    --color-bg-hover: #1E2C38;
+    --color-bg-inset: #0A1018;
+
+    /* Borders */
+    --color-border-subtle: #1C2A36;
+    --color-border: #263545;
+    --color-border-strong: #3A5068;
+
+    /* Text */
+    --color-text-primary: #E2E8EF;
+    --color-text-secondary: #9BAAB9;
+    --color-text-muted: #6B7D8E;
+
+    /* Header */
+    --color-header-bg: #10253F;
+
+    /* Brand */
+    --color-primary: #4A90C4;
+    --color-primary-strong: #17365D;
+
+    /* Status */
+    --color-ok: #3F6B4F;
+    --color-ok-text: #6BBF80;
+    --color-advisory: #3D668A;
+    --color-advisory-text: #7BB4D4;
+    --color-caution: #B07A24;
+    --color-caution-text: #E0A840;
+    --color-high: #B65C45;
+    --color-high-text: #E08060;
+    --color-critical: #9E3D3D;
+    --color-critical-text: #E06060;
+
+    /* Misc */
+    --color-simulation: #7B6DC0;
+    --shadow-modal: 0 8px 32px rgba(0,0,0,.55);
+  }
+
+  html[data-theme="day"] {
+    /* Surfaces */
+    --color-bg-canvas: #F3F5F6;
+    --color-bg-panel: #FFFFFF;
+    --color-bg-raised: #EEF1F4;
+    --color-bg-hover: #E4E9EE;
+    --color-bg-inset: #E8ECF0;
+
+    /* Borders */
+    --color-border-subtle: #D5DDE5;
+    --color-border: #BCC8D2;
+    --color-border-strong: #8DA0B3;
+
+    /* Text */
+    --color-text-primary: #0C1622;
+    --color-text-secondary: #3A4F62;
+    --color-text-muted: #5A6F80;
+
+    /* Header */
+    --color-header-bg: #10253F;
+
+    /* Brand */
+    --color-primary: #17365D;
+    --color-primary-strong: #10253F;
+
+    /* Status */
+    --color-ok: #3F6B4F;
+    --color-ok-text: #2A5A3A;
+    --color-advisory: #3D668A;
+    --color-advisory-text: #2A5070;
+    --color-caution: #B07A24;
+    --color-caution-text: #8A5F15;
+    --color-high: #B65C45;
+    --color-high-text: #8A3C28;
+    --color-critical: #9E3D3D;
+    --color-critical-text: #802020;
+
+    /* Misc */
+    --color-simulation: #5A3EC0;
+    --shadow-modal: 0 8px 32px rgba(12,22,34,.18);
+  }
+}

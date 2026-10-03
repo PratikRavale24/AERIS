@@ -1,67 +1,38 @@
 import React, { useState } from 'react';
 import { 
-  X, 
-  Activity, 
-  AlertTriangle, 
-  Clock, 
-  FileText, 
-  Cpu, 
-  ShieldCheck, 
-  TrendingUp, 
-  Wrench,
-  BarChart3,
-  Layers,
-  ChevronRight
+  X, Activity, AlertTriangle, FileText, ShieldCheck, 
+  Wrench, BarChart3, Layers, ChevronRight
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 interface ComponentDetail {
-  id: string;
-  name: string;
-  serial_number: string;
-  component_type: string;
-  current_cycles: number;
-  max_design_cycles: number;
+  id: string; name: string; serial_number: string; component_type: string;
+  current_cycles: number; max_design_cycles: number;
   prediction?: {
-    failure_probability_10c: number;
-    rul_cycles_mean: number;
-    rul_cycles_p10: number;
-    rul_cycles_p90: number;
-    is_anomaly: boolean;
+    failure_probability_10c: number; rul_cycles_mean: number;
+    rul_cycles_p10: number; rul_cycles_p90: number; is_anomaly: boolean;
     shap_json?: Record<string, number>;
   };
 }
 
 interface AircraftDetailModalProps {
   aircraft: {
-    id: string;
-    tail_number: string;
-    fleet_type: string;
-    base_location: string;
-    status: string;
-    flight_hours: number;
-    total_cycles: number;
-    components: ComponentDetail[];
+    id: string; tail_number: string; fleet_type: string; base_location: string;
+    status: string; flight_hours: number; total_cycles: number; components: ComponentDetail[];
   } | null;
   onClose: () => void;
   onNavigateRecommendations: () => void;
 }
 
-export const AircraftDetailModal: React.FC<AircraftDetailModalProps> = ({
-  aircraft,
-  onClose,
-  onNavigateRecommendations,
-}) => {
-  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(
-    aircraft?.components[0]?.id || null
-  );
+export const AircraftDetailModal: React.FC<AircraftDetailModalProps> = ({ aircraft, onClose, onNavigateRecommendations }) => {
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(aircraft?.components[0]?.id || null);
+  const [simulationActive, setSimulationActive] = useState(false);
 
   if (!aircraft) return null;
 
   const selectedComp = aircraft.components.find((c) => c.id === selectedComponentId) || aircraft.components[0];
   const pred = selectedComp?.prediction;
 
-  // Mock sample telemetry trend for visualization
   const mockTelemetryData = Array.from({ length: 30 }, (_, i) => {
     const cycle = (selectedComp?.current_cycles || 100) - 30 + i;
     const baseTemp = 640 + Math.sin(i * 0.4) * 8;
@@ -74,75 +45,74 @@ export const AircraftDetailModal: React.FC<AircraftDetailModalProps> = ({
     };
   });
 
+  const getRiskColor = (risk: number) => risk >= 0.7 ? 'var(--color-critical-text)' : risk >= 0.3 ? 'var(--color-caution-text)' : 'var(--color-ok-text)';
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end">
-      <div className="w-full max-w-4xl bg-[#111827] border-l border-gray-800 h-full overflow-y-auto flex flex-col shadow-2xl">
-        {/* Modal Header */}
-        <div className="p-6 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-[#111827]/95 backdrop-blur z-10">
+    <div className="fixed inset-0 z-50 flex justify-end" style={{ backgroundColor: 'rgba(8,12,18,0.8)' }}>
+      <div className="w-full max-w-4xl h-full overflow-y-auto flex flex-col"
+           style={{ backgroundColor: 'var(--color-bg-panel)', borderLeft: '1px solid var(--color-border)', boxShadow: 'var(--shadow-modal)' }}>
+        
+        {/* Header */}
+        <div className="p-6 flex items-center justify-between sticky top-0 z-10"
+             style={{ backgroundColor: 'var(--color-bg-panel)', borderBottom: '1px solid var(--color-border)' }}>
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-white font-mono">{aircraft.tail_number}</h2>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border ${
-                aircraft.status === 'FMC' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-red-950 text-red-400 border-red-800'
-              }`}>
+              <h2 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{aircraft.tail_number}</h2>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                    style={{
+                      backgroundColor: aircraft.status === 'FMC' ? 'var(--color-ok)20' : 'var(--color-critical)20',
+                      color: aircraft.status === 'FMC' ? 'var(--color-ok-text)' : 'var(--color-critical-text)',
+                      border: `1px solid ${aircraft.status === 'FMC' ? 'var(--color-ok)' : 'var(--color-critical)'}40`,
+                    }}>
                 {aircraft.status}
               </span>
             </div>
-            <p className="text-xs text-gray-400 font-mono mt-1">
-              {aircraft.fleet_type} &bull; Base: {aircraft.base_location} &bull; Flight Hours: {aircraft.flight_hours.toLocaleString()} hrs
+            <p className="text-[12px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
+              {aircraft.fleet_type} · {aircraft.base_location} · {aircraft.flight_hours.toLocaleString()} hrs
             </p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onNavigateRecommendations}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 shadow-md"
-            >
-              <Wrench className="w-3.5 h-3.5" />
-              View Recommendations
+          <div className="flex items-center gap-2">
+            <button onClick={onNavigateRecommendations}
+              className="px-3 py-1.5 rounded-panel text-[12px] font-medium text-white flex items-center gap-1.5"
+              style={{ backgroundColor: 'var(--color-primary-strong)' }}>
+              <Wrench className="w-3.5 h-3.5" /> Recommendations
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-            >
+            <button onClick={onClose} className="p-2 rounded-panel" style={{ color: 'var(--color-text-muted)' }}>
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Modal Body */}
+        {/* Body */}
         <div className="p-6 space-y-6 flex-1">
-          {/* Components Selector */}
+          {/* Component Selector */}
           <div>
-            <h3 className="text-xs font-mono uppercase text-gray-400 mb-3 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-blue-400" /> Tracked Critical Components
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-muted)' }}>
+              <Layers className="w-3.5 h-3.5 inline mr-1.5" style={{ color: 'var(--color-primary)' }} />
+              Tracked Components
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {aircraft.components.map((comp) => {
                 const isSelected = comp.id === selectedComp?.id;
                 const cPred = comp.prediction;
                 const isHigh = cPred && cPred.failure_probability_10c >= 0.7;
-
                 return (
-                  <button
-                    key={comp.id}
-                    onClick={() => setSelectedComponentId(comp.id)}
-                    className={`p-3.5 rounded-xl border text-left transition-all ${
-                      isSelected
-                        ? 'bg-blue-950/40 border-blue-500 text-white shadow-lg'
-                        : 'bg-gray-900/60 border-gray-800 text-gray-300 hover:bg-gray-800/80'
-                    }`}
-                  >
+                  <button key={comp.id} onClick={() => setSelectedComponentId(comp.id)}
+                    className="p-3 rounded-panel text-left"
+                    style={{
+                      backgroundColor: isSelected ? 'var(--color-bg-hover)' : 'var(--color-bg-raised)',
+                      border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border-subtle)'}`,
+                    }}>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm truncate">{comp.name}</span>
-                      {isHigh && (
-                        <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                      )}
+                      <span className="text-[13px] font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{comp.name}</span>
+                      {isHigh && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--color-critical)' }} />}
                     </div>
-                    <div className="text-xs text-gray-400 font-mono mt-1">S/N: {comp.serial_number}</div>
-                    <div className="mt-2 flex items-center justify-between text-[11px] font-mono">
-                      <span>RUL: <strong className="text-white">{cPred ? cPred.rul_cycles_mean : 'N/A'}</strong> cyc</span>
-                      <span className={isHigh ? 'text-red-400 font-bold' : 'text-emerald-400'}>
+                    <div className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>S/N: {comp.serial_number}</div>
+                    <div className="mt-2 flex items-center justify-between text-[11px]">
+                      <span style={{ color: 'var(--color-text-secondary)' }}>
+                        RUL: <strong style={{ color: 'var(--color-text-primary)' }}>{cPred ? cPred.rul_cycles_mean : 'N/A'}</strong> cyc
+                      </span>
+                      <span style={{ color: cPred ? getRiskColor(cPred.failure_probability_10c) : 'var(--color-ok-text)' }}>
                         {cPred ? `${(cPred.failure_probability_10c * 100).toFixed(0)}% Risk` : 'Normal'}
                       </span>
                     </div>
@@ -152,88 +122,130 @@ export const AircraftDetailModal: React.FC<AircraftDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Selected Component ML Diagnostics */}
+          {/* Component Diagnostics */}
           {selectedComp && (
-            <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-5 space-y-6">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-4">
+            <div className="rounded-panel p-5 space-y-6"
+                 style={{ backgroundColor: 'var(--color-bg-raised)', border: '1px solid var(--color-border-subtle)' }}>
+              
+              {/* Component Header */}
+              <div className="flex items-center justify-between pb-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
                 <div>
-                  <h4 className="text-base font-bold text-white">{selectedComp.name} Diagnostic Profile</h4>
-                  <p className="text-xs text-gray-400 font-mono">
-                    Type: {selectedComp.component_type} &bull; Current Cycles: {selectedComp.current_cycles} / {selectedComp.max_design_cycles} max
+                  <h4 className="text-[15px] font-bold" style={{ color: 'var(--color-text-primary)' }}>{selectedComp.name}</h4>
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                    {selectedComp.component_type} · Cycles: {selectedComp.current_cycles} / {selectedComp.max_design_cycles}
                   </p>
                 </div>
-                {pred && pred.is_anomaly && (
-                  <span className="px-3 py-1 bg-red-950/80 border border-red-800 text-red-400 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4" /> Anomaly Detected (IsolationForest)
+                {pred?.is_anomaly && (
+                  <span className="px-2 py-1 rounded-panel text-[11px] font-semibold flex items-center gap-1.5"
+                        style={{ backgroundColor: 'var(--color-critical)20', color: 'var(--color-critical-text)', border: '1px solid var(--color-critical)40' }}>
+                    <AlertTriangle className="w-3.5 h-3.5" /> Anomaly Detected
                   </span>
                 )}
               </div>
 
-              {/* ML Prediction Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Card 1: 10-Cycle Failure Probability */}
-                <div className="bg-[#111827] border border-gray-800 rounded-lg p-4">
-                  <span className="text-xs font-mono text-gray-400 block">10-Cycle Failure Prob</span>
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className={`text-2xl font-extrabold font-mono ${
-                      (pred?.failure_probability_10c || 0) >= 0.7 ? 'text-red-400' : 'text-emerald-400'
-                    }`}>
-                      {pred ? `${(pred.failure_probability_10c * 100).toFixed(1)}%` : 'N/A'}
-                    </span>
+              {/* What-If Toggle */}
+              <div className="p-4 rounded-panel space-y-3"
+                   style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border-subtle)' }}>
+                <h5 className="text-[12px] font-semibold flex items-center gap-2" style={{ color: 'var(--color-simulation)' }}>
+                  <Layers className="w-3.5 h-3.5" /> What-If Scenario
+                </h5>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[13px] font-medium" style={{ color: 'var(--color-text-primary)' }}>Delay Spare Delivery</div>
+                    <div className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Simulate 14-day delay for {selectedComp.name}</div>
                   </div>
-                  <p className="text-[11px] text-gray-500 font-mono mt-1">LightGBM Classifier (Calibrated)</p>
+                  <button onClick={() => setSimulationActive(!simulationActive)}
+                    className="relative inline-flex h-5 w-10 items-center rounded-full"
+                    style={{ backgroundColor: simulationActive ? 'var(--color-simulation)' : 'var(--color-border)' }}>
+                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${simulationActive ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </button>
                 </div>
-
-                {/* Card 2: RUL Mean & Conformal Range */}
-                <div className="bg-[#111827] border border-gray-800 rounded-lg p-4">
-                  <span className="text-xs font-mono text-gray-400 block">Remaining Useful Life (RUL)</span>
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-2xl font-extrabold text-white font-mono">
-                      {pred?.rul_cycles_mean ?? 'N/A'}
-                    </span>
-                    <span className="text-xs text-gray-400 font-mono">cycles</span>
+                {simulationActive && (
+                  <div className="p-3 rounded-panel"
+                       style={{ backgroundColor: 'var(--color-bg-inset)', border: '1px solid var(--color-border-subtle)' }}>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-simulation)' }}>Simulated Impact</div>
+                    <div className="grid grid-cols-2 gap-3 text-[12px]">
+                      <div>
+                        <span className="block" style={{ color: 'var(--color-text-muted)' }}>Fleet Availability</span>
+                        <span className="font-bold" style={{ color: 'var(--color-critical-text)' }}>-4.1% (1 asset down)</span>
+                      </div>
+                      <div>
+                        <span className="block" style={{ color: 'var(--color-text-muted)' }}>Priority Score</span>
+                        <span className="font-bold" style={{ color: 'var(--color-caution-text)' }}>Escalated to 98 (CRITICAL)</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-blue-400 font-mono mt-1">
-                    80% Interval: [{pred?.rul_cycles_p10 ?? 0} – {pred?.rul_cycles_p90 ?? 0}] cyc
+                )}
+              </div>
+
+              {/* ML Prediction Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 rounded-panel" style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border-subtle)' }}>
+                  <span className="text-[10px] font-medium block" style={{ color: 'var(--color-text-muted)' }}>10-Cycle Failure Risk</span>
+                  <span className="text-xl font-bold block mt-0.5 tabular-nums"
+                        style={{ color: pred ? getRiskColor(pred.failure_probability_10c) : 'var(--color-text-primary)' }}>
+                    {pred ? `${(pred.failure_probability_10c * 100).toFixed(1)}%` : 'N/A'}
+                  </span>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>LightGBM Calibrated</p>
+                </div>
+                <div className="p-3 rounded-panel" style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border-subtle)' }}>
+                  <span className="text-[10px] font-medium block" style={{ color: 'var(--color-text-muted)' }}>Est. RUL</span>
+                  <span className="text-xl font-bold block mt-0.5 tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
+                    {pred?.rul_cycles_mean ?? 'N/A'} <span className="text-[11px] font-normal" style={{ color: 'var(--color-text-muted)' }}>cyc</span>
+                  </span>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-advisory-text)' }}>
+                    80% CI: [{pred?.rul_cycles_p10 ?? 0} – {pred?.rul_cycles_p90 ?? 0}]
                   </p>
                 </div>
-
-                {/* Card 3: Conformal Prediction Bounds */}
-                <div className="bg-[#111827] border border-gray-800 rounded-lg p-4">
-                  <span className="text-xs font-mono text-gray-400 block">Model Confidence</span>
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-2xl font-extrabold text-indigo-400 font-mono">92.4%</span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 font-mono mt-1">Conformal Interval Bounds</p>
+                <div className="p-3 rounded-panel" style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border-subtle)' }}>
+                  <span className="text-[10px] font-medium block" style={{ color: 'var(--color-text-muted)' }}>Prediction Confidence</span>
+                  <span className="text-xl font-bold block mt-0.5 tabular-nums" style={{ color: 'var(--color-primary)' }}>92.4%</span>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Conformal Bounds</p>
                 </div>
               </div>
 
-              {/* Sensor Telemetry Chart */}
+              {/* Telemetry Chart */}
               <div>
-                <h5 className="text-xs font-mono uppercase text-gray-400 mb-2 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-400" /> Sensor Degradation Trend (Last 30 Cycles)
+                <h5 className="text-[11px] font-semibold uppercase tracking-wider mb-2 flex items-center gap-2"
+                    style={{ color: 'var(--color-text-muted)' }}>
+                  <Activity className="w-3.5 h-3.5" style={{ color: 'var(--color-ok-text)' }} />
+                  Sensor Degradation Trend (Last 30 Cycles)
                 </h5>
-                <div className="h-52 bg-[#0B0F19] rounded-lg p-3 border border-gray-800">
+                <div className="h-52 p-3 rounded-panel"
+                     style={{ backgroundColor: 'var(--color-bg-inset)', border: '1px solid var(--color-border-subtle)' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={mockTelemetryData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
-                      <XAxis dataKey="cycle" stroke="#6B7280" tick={{ fontSize: 10 }} />
-                      <YAxis yAxisId="left" stroke="#10B981" tick={{ fontSize: 10 }} domain={['dataMin - 10', 'dataMax + 10']} />
-                      <YAxis yAxisId="right" orientation="right" stroke="#3B82F6" tick={{ fontSize: 10 }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', fontSize: '12px' }} />
-                      <Line yAxisId="left" type="monotone" dataKey="egt_celsius" stroke="#10B981" strokeWidth={2} name="EGT (°C)" dot={false} />
-                      <Line yAxisId="right" type="monotone" dataKey="vibration_rms" stroke="#3B82F6" strokeWidth={2} name="Vibration (RMS)" dot={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" />
+                      <XAxis dataKey="cycle" stroke="var(--color-text-muted)" tick={{ fontSize: 10 }} />
+                      <YAxis yAxisId="left" stroke="var(--color-ok-text)" tick={{ fontSize: 10 }} domain={['dataMin - 10', 'dataMax + 10']} />
+                      <YAxis yAxisId="right" orientation="right" stroke="var(--color-primary)" tick={{ fontSize: 10 }} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-bg-panel)',
+                          borderColor: 'var(--color-border)',
+                          fontSize: '12px',
+                          color: 'var(--color-text-primary)',
+                          borderRadius: '6px',
+                        }}
+                      />
+                      <Line yAxisId="left" type="monotone" dataKey="egt_celsius" stroke="var(--color-ok-text)" strokeWidth={2} name="EGT (°C)" dot={false} />
+                      <Line yAxisId="right" type="monotone" dataKey="vibration_rms" stroke="var(--color-primary)" strokeWidth={2} name="Vibration (RMS)" dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              {/* SHAP Feature Importance Explanations */}
+              {/* SHAP */}
               {pred?.shap_json && (
                 <div>
-                  <h5 className="text-xs font-mono uppercase text-gray-400 mb-3 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-purple-400" /> SHAP Feature Attribution (Why this prediction?)
+                  <h5 className="text-[11px] font-semibold uppercase tracking-wider mb-3 flex items-center gap-2"
+                      style={{ color: 'var(--color-text-muted)' }}>
+                    <BarChart3 className="w-3.5 h-3.5" style={{ color: 'var(--color-simulation)' }} />
+                    AI Evidence — Feature Attribution (SHAP)
                   </h5>
+                  <p className="text-[10px] mb-3 px-1" style={{ color: 'var(--color-text-muted)' }}>
+                    AI OUTPUT — ADVISORY · Not an airworthiness or release-to-service decision
+                  </p>
                   <div className="space-y-2">
                     {Object.entries(pred.shap_json)
                       .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
@@ -241,17 +253,15 @@ export const AircraftDetailModal: React.FC<AircraftDetailModalProps> = ({
                       .map(([feature, value]) => {
                         const isPositive = value > 0;
                         const widthPct = Math.min(100, Math.abs(value) * 300);
-
                         return (
-                          <div key={feature} className="flex items-center text-xs font-mono gap-3">
-                            <span className="w-48 text-gray-300 truncate">{feature}</span>
-                            <div className="flex-1 bg-gray-900 h-4 rounded overflow-hidden relative flex items-center">
-                              <div
-                                className={`h-full rounded ${isPositive ? 'bg-red-500' : 'bg-emerald-500'}`}
-                                style={{ width: `${Math.max(4, widthPct)}%` }}
-                              />
+                          <div key={feature} className="flex items-center text-[12px] gap-3">
+                            <span className="w-44 truncate" style={{ color: 'var(--color-text-secondary)' }}>{feature}</span>
+                            <div className="flex-1 h-4 rounded overflow-hidden" style={{ backgroundColor: 'var(--color-bg-inset)' }}>
+                              <div className="h-full rounded"
+                                   style={{ width: `${Math.max(4, widthPct)}%`, backgroundColor: isPositive ? 'var(--color-critical)' : 'var(--color-ok)' }} />
                             </div>
-                            <span className={`w-16 text-right ${isPositive ? 'text-red-400' : 'text-emerald-400'}`}>
+                            <span className="w-16 text-right tabular-nums text-[11px] font-semibold"
+                                  style={{ color: isPositive ? 'var(--color-critical-text)' : 'var(--color-ok-text)' }}>
                               {isPositive ? '+' : ''}{value.toFixed(4)}
                             </span>
                           </div>

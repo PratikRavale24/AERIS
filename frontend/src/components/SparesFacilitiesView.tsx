@@ -1,32 +1,15 @@
 import React from 'react';
-import { 
-  Package, 
-  Building2, 
-  AlertTriangle, 
-  TrendingDown, 
-  Clock, 
-  CheckCircle2, 
-  Wrench
-} from 'lucide-react';
+import { Package, Building2, AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 
 interface SpareItem {
-  part_no: string;
-  description?: string;
-  stock: number;
-  min_stock: number;
-  lead_time_days: number;
-  criticality: string;
-  facility_id?: string;
-  status: string;
+  part_no: string; description?: string; stock: number; min_stock: number;
+  lead_time_days: number; criticality: string; facility_id?: string; status: string;
   affected_components?: Array<{ component_id: string; aircraft_id: string }>;
 }
 
 interface FacilityItem {
-  facility_id: string;
-  name: string;
-  capability: string;
-  slots_available: number;
-  avg_turnaround_days: number;
+  facility_id: string; name: string; capability: string;
+  slots_available: number; avg_turnaround_days: number;
 }
 
 interface SparesFacilitiesViewProps {
@@ -35,135 +18,146 @@ interface SparesFacilitiesViewProps {
   readinessData?: any[];
 }
 
-export const SparesFacilitiesView: React.FC<SparesFacilitiesViewProps> = ({
-  spares,
-  facilities,
-  readinessData = [],
-}) => {
+const ReadinessBadge: React.FC<{status: string}> = ({status}) => {
+  const s = status.toUpperCase();
+  const c = s === 'SHORTAGE' ? {color: 'var(--color-critical-text)', bg: 'var(--color-critical)', icon: <AlertTriangle className="w-3 h-3" />}
+    : s === 'LOW_STOCK' ? {color: 'var(--color-caution-text)', bg: 'var(--color-caution)', icon: <Clock className="w-3 h-3" />}
+    : {color: 'var(--color-ok-text)', bg: 'var(--color-ok)', icon: <CheckCircle2 className="w-3 h-3" />};
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold"
+          style={{ backgroundColor: c.bg + '20', color: c.color, border: `1px solid ${c.bg}40` }}>
+      {c.icon} {s === 'LOW_STOCK' ? 'LIMITED' : s === 'SHORTAGE' ? 'SHORTAGE' : 'READY'}
+    </span>
+  );
+};
+
+export const SparesFacilitiesView: React.FC<SparesFacilitiesViewProps> = ({ spares, facilities, readinessData = [] }) => {
+  const shortages = spares.filter(s => s.status === 'SHORTAGE' || s.status === 'LOW_STOCK').length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between bg-[#111827] border border-gray-800 rounded-xl p-5 shadow-lg">
+      <div className="rounded-panel p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+           style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Package className="w-6 h-6 text-purple-400" /> Supply Chain & Facility Capacity
+          <h2 className="text-section flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
+            <Package className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
+            Spare Readiness & Facility Capacity
           </h2>
-          <p className="text-xs text-gray-400 font-mono mt-1">
-            Spare part lead-time analysis vs component RUL &bull; Hangar bay capacity optimization
+          <p className="text-[12px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
+            Lead-time vs RUL analysis · Hangar bay utilization
           </p>
         </div>
-
         <div className="flex items-center gap-2">
-          <span className="px-3 py-1 bg-purple-950/80 border border-purple-800 text-purple-300 rounded-lg text-xs font-mono">
-            {spares.length} Tracked NSN Spares
+          <span className="px-2.5 py-1 rounded text-[11px] font-medium"
+                style={{ backgroundColor: 'var(--color-bg-inset)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)' }}>
+            {spares.length} Spares Tracked
           </span>
-          <span className="px-3 py-1 bg-blue-950/80 border border-blue-800 text-blue-300 rounded-lg text-xs font-mono">
-            {facilities.length} Active Maintenance Bases
+          <span className="px-2.5 py-1 rounded text-[11px] font-medium"
+                style={{ backgroundColor: 'var(--color-bg-inset)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)' }}>
+            {facilities.length} Facilities
           </span>
+          {shortages > 0 && (
+            <span className="px-2.5 py-1 rounded text-[11px] font-semibold"
+                  style={{ backgroundColor: 'var(--color-critical)20', color: 'var(--color-critical-text)', border: '1px solid var(--color-critical)40' }}>
+              <AlertTriangle className="w-3 h-3 inline mr-1" />{shortages} Shortage{shortages > 1 ? 's' : ''}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Grid: Spares Inventory & Facilities */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Spares Inventory */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-mono uppercase text-gray-400 font-bold flex items-center gap-2">
-              <Package className="w-4 h-4 text-purple-400" /> Spares Inventory & Lead Times
-            </h3>
-          </div>
-
-          <div className="bg-[#111827] border border-gray-800 rounded-xl overflow-hidden shadow-lg">
+        {/* Spares Table */}
+        <div className="lg:col-span-7">
+          <div className="rounded-panel overflow-hidden"
+               style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
+            <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
+              <h3 className="text-[12px] font-semibold uppercase tracking-wider flex items-center gap-2"
+                  style={{ color: 'var(--color-text-muted)' }}>
+                <Package className="w-3.5 h-3.5" /> Spares Inventory
+              </h3>
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-gray-900/90 text-gray-400 border-b border-gray-800">
-                  <tr>
-                    <th className="p-3">Part No & Description</th>
-                    <th className="p-3">Criticality</th>
-                    <th className="p-3 text-center">Stock / Min</th>
-                    <th className="p-3 text-center">Lead Time</th>
-                    <th className="p-3 text-right">Status</th>
+              <table className="w-full text-left text-[13px]">
+                <thead>
+                  <tr style={{ backgroundColor: 'var(--color-bg-raised)' }}>
+                    {['Part Number', 'Criticality', 'Stock / Min', 'Lead Time', 'Readiness'].map(h => (
+                      <th key={h} className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider"
+                          style={{ color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border-subtle)' }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800/80 text-gray-300">
-                  {spares.map((item) => {
-                    const isLowStock = item.status === 'SHORTAGE' || item.status === 'LOW_STOCK';
-
-                    return (
-                      <tr key={item.part_no} className="hover:bg-gray-800/40 transition-colors">
-                        <td className="p-3">
-                          <div className="font-bold text-white">{item.part_no}</div>
-                          <div className="text-[10px] text-gray-500">{item.description || 'Aircraft Critical Part'}</div>
-                        </td>
-                        <td className="p-3 text-gray-400 font-bold">{item.criticality}</td>
-                        <td className="p-3 text-center">
-                          <span className={`font-bold ${isLowStock ? 'text-red-400' : 'text-emerald-400'}`}>
-                            {item.stock}
-                          </span>
-                          <span className="text-gray-500 text-[10px]"> / min {item.min_stock}</span>
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className="text-amber-400 font-bold">{item.lead_time_days} days</span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            item.status === 'SHORTAGE'
-                              ? 'bg-red-950 text-red-400 border border-red-800'
-                              : item.status === 'LOW_STOCK'
-                              ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                              : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                          }`}>
-                            {item.status}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                <tbody>
+                  {spares.map((item) => (
+                    <tr key={item.part_no} style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
+                      <td className="px-4 py-3">
+                        <div className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{item.part_no}</div>
+                        <div className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{item.description || 'Aircraft Critical Part'}</div>
+                      </td>
+                      <td className="px-4 py-3 text-[12px] font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                        {item.criticality}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">
+                        <span className="font-semibold" style={{ color: (item.status === 'SHORTAGE' || item.status === 'LOW_STOCK') ? 'var(--color-critical-text)' : 'var(--color-ok-text)' }}>
+                          {item.stock}
+                        </span>
+                        <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}> / min {item.min_stock}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-semibold tabular-nums" style={{ color: 'var(--color-caution-text)' }}>
+                          {item.lead_time_days}
+                        </span>
+                        <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}> days</span>
+                      </td>
+                      <td className="px-4 py-3"><ReadinessBadge status={item.status} /></td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        {/* Right: Facilities Capacity & Maintenance Slots */}
-        <div className="lg:col-span-5 space-y-4">
-          <h3 className="text-xs font-mono uppercase text-gray-400 font-bold flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-blue-400" /> Maintenance Hangar Bay Utilization
+        {/* Facilities */}
+        <div className="lg:col-span-5 space-y-3">
+          <h3 className="text-[12px] font-semibold uppercase tracking-wider flex items-center gap-2 px-1"
+              style={{ color: 'var(--color-text-muted)' }}>
+            <Building2 className="w-3.5 h-3.5" /> Facility Capacity
           </h3>
-
-          <div className="space-y-3">
-            {facilities.map((fac) => {
-              const capabilitiesList = (fac.capability || '').split(',').map((c) => c.trim());
-
-              return (
-                <div key={fac.facility_id} className="bg-[#111827] border border-gray-800 rounded-xl p-4 shadow-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-white text-base">{fac.name}</h4>
-                      <p className="text-xs text-gray-400 font-mono">ID: {fac.facility_id} &bull; Turnaround: {fac.avg_turnaround_days} days</p>
-                    </div>
-
-                    <div className="text-right">
-                      <span className={`px-2.5 py-1 rounded text-xs font-mono font-bold ${
-                        fac.slots_available > 0 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-red-950 text-red-400 border border-red-800'
-                      }`}>
-                        {fac.slots_available} Slots Available
-                      </span>
-                    </div>
+          {facilities.map((fac) => {
+            const caps = (fac.capability || '').split(',').map(c => c.trim()).filter(Boolean);
+            return (
+              <div key={fac.facility_id} className="rounded-panel p-4"
+                   style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{fac.name}</h4>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                      {fac.facility_id} · Avg turnaround: {fac.avg_turnaround_days} days
+                    </p>
                   </div>
-
-                  {/* Capabilities tags */}
+                  <span className="px-2 py-0.5 rounded text-[11px] font-bold"
+                        style={{
+                          backgroundColor: fac.slots_available > 0 ? 'var(--color-ok)20' : 'var(--color-critical)20',
+                          color: fac.slots_available > 0 ? 'var(--color-ok-text)' : 'var(--color-critical-text)',
+                          border: `1px solid ${fac.slots_available > 0 ? 'var(--color-ok)' : 'var(--color-critical)'}40`,
+                        }}>
+                    {fac.slots_available} Slot{fac.slots_available !== 1 ? 's' : ''} Available
+                  </span>
+                </div>
+                {caps.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {capabilitiesList.map((cap) => (
-                      <span key={cap} className="px-2 py-0.5 rounded bg-gray-900 text-gray-400 text-[10px] font-mono border border-gray-800">
+                    {caps.map(cap => (
+                      <span key={cap} className="px-2 py-0.5 rounded text-[10px] font-medium"
+                            style={{ backgroundColor: 'var(--color-bg-inset)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border-subtle)' }}>
                         {cap}
                       </span>
                     ))}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
