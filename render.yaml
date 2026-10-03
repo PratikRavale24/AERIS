@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: aeris-backend
+    env: python
+    region: oregon
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: APP_NAME
+        value: AERIS
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
