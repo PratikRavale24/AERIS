@@ -13,6 +13,7 @@ import { fleetApi, recommendationsApi, sparesApi, auditApi, authApi } from './ap
 export function App() {
   const [activeTab, setActiveTab] = useState('fleet');
   const [user, setUser] = useState<{ username: string; role: string } | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const getPrimaryTab = (role: string) => {
     switch (role) {
@@ -31,7 +32,13 @@ export function App() {
         setUser({ username: res.username, role: res.role });
         setActiveTab(getPrimaryTab(res.role));
       })
-      .catch(() => setUser(null));
+      .catch(() => {
+        setUser(null);
+        setShowLoginModal(true);
+      })
+      .finally(() => {
+        setCheckingAuth(false);
+      });
   }, []);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -71,15 +78,20 @@ export function App() {
   const [notifications, setNotifications] = useState<{id: number, message: string, type: 'critical' | 'warning'}[]>([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setNotifications(prev => [...prev, {
-        id: Date.now(),
-        message: `PRIORITY ALERT: C130-9 Hydraulic Main Pump exceeded 90% risk threshold. Spares shortage detected.`,
-        type: 'critical'
-      }]);
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!user) return;
+    
+    // Only show this specific notification to supervisors or planners
+    if (user.role === 'FLEET_SUPERVISOR' || user.role === 'MAINT_PLANNER') {
+      const timer = setTimeout(() => {
+        setNotifications(prev => [...prev, {
+          id: Date.now(),
+          message: `PRIORITY ALERT: C130-9 Hydraulic Main Pump exceeded 90% risk threshold. Spares shortage detected.`,
+          type: 'critical'
+        }]);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
   // Load initial data
   const loadData = async () => {
@@ -262,12 +274,17 @@ export function App() {
       )}
 
       {/* Login Modal */}
-      {showLoginModal && (
+      {(showLoginModal || !user) && !checkingAuth && (
         <LoginModal
-          onClose={() => setShowLoginModal(false)}
+          onClose={() => {
+            if (user) {
+              setShowLoginModal(false);
+            }
+          }}
           onLoginSuccess={(u) => {
             setUser(u);
             setActiveTab(getPrimaryTab(u.role));
+            setShowLoginModal(false);
           }}
         />
       )}
