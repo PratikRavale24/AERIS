@@ -86,10 +86,22 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # ── Middleware ─────────────────────────────────────────────
+    from fastapi.middleware.cors import CORSMiddleware
+    
+    # Allow Vercel frontend to access the Render backend
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[frontend_url],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     application.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["localhost", "aeris-local", "127.0.0.1"],
+        allowed_hosts=["*"],
     )
 
     @application.middleware("http")
