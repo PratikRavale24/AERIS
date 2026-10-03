@@ -1,12 +1,6 @@
 # AERIS - Aircraft Reliability & Intelligence System
 
-![AERIS Banner](docs/assets/banner.png) <!-- Update this path if a banner is added -->
-
-**Smart India Hackathon 2026** | **Problem Statement:** SIH26249
-
 AERIS is an industry-grade, AI-driven predictive maintenance and fleet-availability decision-support platform. It integrates aircraft health telemetry, maintenance records, spare parts availability, and maintenance agency capacity to generate actionable, evidence-backed maintenance recommendations.
-
-> **Note:** This is an advisory decision-support prototype. It does not replace human authorization or provide autonomous release-to-service decisions.
 
 ## Features
 
