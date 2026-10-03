@@ -8,7 +8,35 @@ import { SparesFacilitiesView } from './components/SparesFacilitiesView';
 import { AuditSecurityView } from './components/AuditSecurityView';
 import { LoginModal } from './components/LoginModal';
 import { ModelCardsModal } from './components/ModelCardsModal';
+import { OnboardingTour } from './components/OnboardingTour';
 import { fleetApi, recommendationsApi, sparesApi, auditApi, authApi } from './api/client';
+
+const FALLBACK_AIRCRAFT = [
+  { id: 'ac-1', tail_number: 'SU-301', fleet_type: 'Su-30MKI', base_location: 'Hasimara', status: 'PMC', flight_hours: 1420, highest_risk: 0.84, min_rul: 18, high_risk_components: 1 },
+  { id: 'ac-2', tail_number: 'RF-204', fleet_type: 'Rafale', base_location: 'Ambala', status: 'FMC', flight_hours: 890, highest_risk: 0.12, min_rul: 140, high_risk_components: 0 },
+  { id: 'ac-3', tail_number: 'TJ-108', fleet_type: 'Tejas MK1A', base_location: 'Sulur', status: 'FMC', flight_hours: 450, highest_risk: 0.28, min_rul: 88, high_risk_components: 0 },
+  { id: 'ac-4', tail_number: 'C130-9', fleet_type: 'C-130J', base_location: 'Jorhat', status: 'NMC', flight_hours: 2100, highest_risk: 0.91, min_rul: 6, high_risk_components: 2 },
+  { id: 'ac-5', tail_number: 'AH-641', fleet_type: 'AH-64E', base_location: 'Pathankot', status: 'FMC', flight_hours: 640, highest_risk: 0.08, min_rul: 210, high_risk_components: 0 },
+  { id: 'ac-6', tail_number: 'MR-302', fleet_type: 'Mirage 2000', base_location: 'Leh', status: 'PMC', flight_hours: 1840, highest_risk: 0.64, min_rul: 29, high_risk_components: 1 },
+];
+
+const FALLBACK_RECS = [
+  { id: 'rec-101', aircraft_id: 'SU-301', component_id: 'Turbine Blade Row 1', priority_score: 88.5, priority_tier: 'CRITICAL', risk_score: 0.84, rul_q50: 18, recommended_action: 'REPLACE Engine Turbine Assembly', part_status: 'READY', facility_id: 'Depot 1', status: 'PENDING', evidence_passport_id: 'ep-sha256-9f4a1c8b3e', reason_codes: ['RUL_CRITICAL'] },
+  { id: 'rec-102', aircraft_id: 'C130-9', component_id: 'Hydraulic Main Pump', priority_score: 94.2, priority_tier: 'CRITICAL', risk_score: 0.91, rul_q50: 6, recommended_action: 'INSPECT & REPLACE Hydraulic Pump', part_status: 'SHORTAGE', facility_id: 'Depot 1', status: 'PENDING', evidence_passport_id: 'ep-sha256-4c7b2a9e1d', reason_codes: ['RISK_CRITICAL'] },
+  { id: 'rec-103', aircraft_id: 'MR-302', component_id: 'Radar Transmitter Module', priority_score: 64.0, priority_tier: 'HIGH', risk_score: 0.64, rul_q50: 29, recommended_action: 'CALIBRATE & BENCH TEST Radar Module', part_status: 'READY', facility_id: 'Bay 2', status: 'PENDING', evidence_passport_id: 'ep-sha256-1a8e3f5d9c', reason_codes: ['ANOMALY_DETECTED'] },
+];
+
+const FALLBACK_SPARES = [
+  { part_no: 'TB-9941-A', description: 'Turbine Blade Assembly R1', stock: 4, min_stock: 5, lead_time_days: 12, criticality: 'CRITICAL', status: 'LOW_STOCK' },
+  { part_no: 'HP-8832-B', description: 'Hydraulic Main Pump C-130', stock: 0, min_stock: 2, lead_time_days: 35, criticality: 'CRITICAL', status: 'SHORTAGE' },
+  { part_no: 'RTM-4020-C', description: 'Radar Transmitter Module', stock: 2, min_stock: 1, lead_time_days: 14, criticality: 'HIGH', status: 'READY' },
+];
+
+const FALLBACK_FACILITIES = [
+  { id: 'fac-1', name: 'Hasimara Depot Repair Hangar 2', base_location: 'Hasimara', max_simultaneous_jobs: 4, active_jobs: 3, capabilities: ['Su-30MKI Engine Overhaul', 'Avionics Calibration'] },
+  { id: 'fac-2', name: 'Ambala Forward Maintenance Bay 1', base_location: 'Ambala', max_simultaneous_jobs: 3, active_jobs: 1, capabilities: ['Rafale Systems', 'Hydraulics'] },
+  { id: 'fac-3', name: 'Sulur Base Maintenance Unit', base_location: 'Sulur', max_simultaneous_jobs: 5, active_jobs: 2, capabilities: ['Tejas Structural Repair', 'Engine Test Bed'] },
+];
 
 export function App() {
   const [activeTab, setActiveTab] = useState('fleet');
@@ -218,38 +246,16 @@ export function App() {
       });
   }, [selectedAircraftId, aircraftList]);
 
-  // Fallback demo data
-  const displaySummary = fleetSummary || {
+  // Fallback demo data - Only use API if it actually returned data (total_aircraft > 0)
+  const displaySummary = (fleetSummary && (fleetSummary.total_aircraft > 0 || fleetSummary.availability > 0)) ? fleetSummary : {
     total_aircraft: 24, readiness_rate: 0.875, high_risk_assets: 3,
     maintenance_due: 4, critical_spare_shortages: 1, 
   };
 
-  const displayAircraftList = aircraftList.length > 0 ? aircraftList : [
-    { id: 'ac-1', tail_number: 'SU-301', fleet_type: 'Su-30MKI', base_location: 'Hasimara', status: 'PMC', flight_hours: 1420, highest_risk: 0.84, min_rul: 18, high_risk_components: 1 },
-    { id: 'ac-2', tail_number: 'RF-204', fleet_type: 'Rafale', base_location: 'Ambala', status: 'FMC', flight_hours: 890, highest_risk: 0.12, min_rul: 140, high_risk_components: 0 },
-    { id: 'ac-3', tail_number: 'TJ-108', fleet_type: 'Tejas MK1A', base_location: 'Sulur', status: 'FMC', flight_hours: 450, highest_risk: 0.28, min_rul: 88, high_risk_components: 0 },
-    { id: 'ac-4', tail_number: 'C130-9', fleet_type: 'C-130J', base_location: 'Jorhat', status: 'NMC', flight_hours: 2100, highest_risk: 0.91, min_rul: 6, high_risk_components: 2 },
-    { id: 'ac-5', tail_number: 'AH-641', fleet_type: 'AH-64E', base_location: 'Pathankot', status: 'FMC', flight_hours: 640, highest_risk: 0.08, min_rul: 210, high_risk_components: 0 },
-    { id: 'ac-6', tail_number: 'MR-302', fleet_type: 'Mirage 2000', base_location: 'Leh', status: 'PMC', flight_hours: 1840, highest_risk: 0.64, min_rul: 29, high_risk_components: 1 },
-  ];
-
-  const displayRecs = recommendations.length > 0 ? recommendations : [
-    { id: 'rec-101', aircraft_id: 'SU-301', component_id: 'Turbine Blade Row 1', priority_score: 88.5, priority_tier: 'CRITICAL', risk_score: 0.84, rul_q50: 18, recommended_action: 'REPLACE Engine Turbine Assembly', part_status: 'READY', facility_id: 'Depot 1', status: 'PENDING', evidence_passport_id: 'ep-sha256-9f4a1c8b3e', reason_codes: ['RUL_CRITICAL'] },
-    { id: 'rec-102', aircraft_id: 'C130-9', component_id: 'Hydraulic Main Pump', priority_score: 94.2, priority_tier: 'CRITICAL', risk_score: 0.91, rul_q50: 6, recommended_action: 'INSPECT & REPLACE Hydraulic Pump', part_status: 'SHORTAGE', facility_id: 'Depot 1', status: 'PENDING', evidence_passport_id: 'ep-sha256-4c7b2a9e1d', reason_codes: ['RISK_CRITICAL'] },
-    { id: 'rec-103', aircraft_id: 'MR-302', component_id: 'Radar Transmitter Module', priority_score: 64.0, priority_tier: 'HIGH', risk_score: 0.64, rul_q50: 29, recommended_action: 'CALIBRATE & BENCH TEST Radar Module', part_status: 'READY', facility_id: 'Bay 2', status: 'PENDING', evidence_passport_id: 'ep-sha256-1a8e3f5d9c', reason_codes: ['ANOMALY_DETECTED'] },
-  ];
-
-  const displaySpares = spares.length > 0 ? spares : [
-    { part_no: 'TB-9941-A', description: 'Turbine Blade Assembly R1', stock: 4, min_stock: 5, lead_time_days: 12, criticality: 'CRITICAL', status: 'LOW_STOCK' },
-    { part_no: 'HP-8832-B', description: 'Hydraulic Main Pump C-130', stock: 0, min_stock: 2, lead_time_days: 35, criticality: 'CRITICAL', status: 'SHORTAGE' },
-    { part_no: 'RTM-4020-C', description: 'Radar Transmitter Module', stock: 2, min_stock: 1, lead_time_days: 14, criticality: 'HIGH', status: 'READY' },
-  ];
-
-  const displayFacilities = facilities.length > 0 ? facilities : [
-    { id: 'fac-1', name: 'Hasimara Depot Repair Hangar 2', base_location: 'Hasimara', max_simultaneous_jobs: 4, active_jobs: 3, capabilities: ['Su-30MKI Engine Overhaul', 'Avionics Calibration'] },
-    { id: 'fac-2', name: 'Ambala Forward Maintenance Bay 1', base_location: 'Ambala', max_simultaneous_jobs: 3, active_jobs: 1, capabilities: ['Rafale Systems', 'Hydraulics'] },
-    { id: 'fac-3', name: 'Sulur Base Maintenance Unit', base_location: 'Sulur', max_simultaneous_jobs: 5, active_jobs: 2, capabilities: ['Tejas Structural Repair', 'Engine Test Bed'] },
-  ];
+  const displayAircraftList = aircraftList.length > 0 ? aircraftList : FALLBACK_AIRCRAFT;
+  const displayRecs = recommendations.length > 0 ? recommendations : FALLBACK_RECS;
+  const displaySpares = spares.length > 0 ? spares : FALLBACK_SPARES;
+  const displayFacilities = facilities.length > 0 ? facilities : FALLBACK_FACILITIES;
 
   const displayPosture = securityPosture || {
     overall_status: 'PASS',
@@ -271,6 +277,14 @@ export function App() {
     { id: 'se-2', event_type: 'EGRESS_BLOCKED', severity: 'INFO', description: 'Outbound network probe failed (Air-gap enforced)', created_at: new Date().toISOString() },
     { id: 'se-3', event_type: 'USER_AUTHENTICATED', severity: 'INFO', description: 'User supervisor1 logged in with supervisor role', created_at: new Date().toISOString() },
   ];
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg-canvas)' }}>
+        <div className="w-8 h-8 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: 'var(--color-primary) transparent transparent transparent' }}></div>
+      </div>
+    );
+  }
 
   if (!user && !checkingAuth) {
     return (
@@ -295,6 +309,7 @@ export function App() {
   return (
     <div className="min-h-screen flex flex-col"
          style={{ backgroundColor: 'var(--color-bg-canvas)', color: 'var(--color-text-primary)' }}>
+      {user && <OnboardingTour userRole={user.role} />}
       {/* Navigation Header */}
       <Header
         user={user}

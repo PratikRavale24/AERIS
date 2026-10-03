@@ -90,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className="px-3 py-2 rounded-panel text-[13px] font-medium flex items-center gap-2"
+                    className={`px-3 py-2 rounded-panel text-[13px] font-medium flex items-center gap-2 tour-${tab.id}`}
                     style={{
                       backgroundColor: isActive ? 'var(--color-bg-hover)' : 'transparent',
                       color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)',

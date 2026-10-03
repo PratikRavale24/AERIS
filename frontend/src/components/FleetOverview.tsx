@@ -99,7 +99,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({ summary, aircraftL
   return (
     <div className="space-y-6">
       {/* KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 tour-kpi-row">
         <KpiTile label="Total Aircraft" value={summary?.total_aircraft ?? 0} sub="Monitored assets"
                  icon={<Plane className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />} />
         <KpiTile label="Fleet Availability" value={summary ? `${((summary.readiness_rate || summary.availability || 0) * 100).toFixed(1)}%` : '—'}
@@ -170,12 +170,12 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({ summary, aircraftL
             <thead>
               <tr style={{ backgroundColor: 'var(--color-bg-raised)', borderBottom: '1px solid var(--color-border-subtle)' }}>
                 <th className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Aircraft</th>
-                <th className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Platform</th>
-                <th className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Base</th>
+                <th className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider hidden md:table-cell" style={{ color: 'var(--color-text-muted)' }}>Platform</th>
+                <th className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--color-text-muted)' }}>Base</th>
                 <th className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Status</th>
                 <th className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider text-right" style={{ color: 'var(--color-text-muted)' }}>Failure Risk</th>
                 <th className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider text-right" style={{ color: 'var(--color-text-muted)' }}>Est. RUL</th>
-                <th className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider text-right" style={{ color: 'var(--color-text-muted)' }}>Flight Hrs</th>
+                <th className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider text-right hidden sm:table-cell" style={{ color: 'var(--color-text-muted)' }}>Flight Hrs</th>
                 <th className="px-4 py-2.5" />
               </tr>
             </thead>
@@ -189,26 +189,26 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({ summary, aircraftL
                     <td className="px-4 py-3">
                       <span className="font-bold tracking-wide" style={{ color: 'var(--color-text-primary)' }}>{ac.tail_number}</span>
                     </td>
-                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--color-text-secondary)' }}>{ac.fleet_type}</td>
-                    <td className="px-4 py-3" style={{ color: 'var(--color-text-secondary)' }}>{ac.base_location}</td>
+                    <td className="px-4 py-3 font-medium hidden md:table-cell" style={{ color: 'var(--color-text-secondary)' }}>{ac.fleet_type}</td>
+                    <td className="px-4 py-3 hidden lg:table-cell" style={{ color: 'var(--color-text-secondary)' }}>{ac.base_location}</td>
                     <td className="px-4 py-3"><StatusBadge status={ac.status} /></td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg-inset)' }}>
+                        <div className="w-10 sm:w-16 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-bg-inset)' }}>
                           <div className={`h-full rounded-full transition-all duration-700 ${tier.label === 'HIGH' ? 'animate-pulse' : ''}`} style={{ width: `${Math.max(5, ac.highest_risk * 100)}%`, backgroundColor: tier.bg, boxShadow: `0 0 8px ${tier.bg}60` }} />
                         </div>
-                        <span className="text-[12px] font-bold tabular-nums w-10 text-right" style={{ color: tier.color }}>
+                        <span className="text-[11px] sm:text-[12px] font-bold tabular-nums w-8 sm:w-10 text-right" style={{ color: tier.color }}>
                           {(ac.highest_risk * 100).toFixed(0)}%
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="text-[13px] font-semibold tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
+                      <span className="text-[12px] sm:text-[13px] font-semibold tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
                         {ac.min_rul}
                       </span>
-                      <span className="text-[11px] ml-1" style={{ color: 'var(--color-text-muted)' }}>cyc</span>
+                      <span className="text-[10px] sm:text-[11px] ml-1 hidden sm:inline" style={{ color: 'var(--color-text-muted)' }}>cyc</span>
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
+                    <td className="px-4 py-3 text-right tabular-nums hidden sm:table-cell" style={{ color: 'var(--color-text-secondary)' }}>
                       {ac.flight_hours.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">
