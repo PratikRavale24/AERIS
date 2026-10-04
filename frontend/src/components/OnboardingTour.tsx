@@ -132,10 +132,6 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           scrolledForStep.current = currentStep;
         }
-
-        (el as HTMLElement).style.position = 'relative';
-        (el as HTMLElement).style.zIndex = '999999';
-        (el as HTMLElement).style.pointerEvents = 'auto';
         return;
       }
     }
@@ -160,16 +156,8 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
   }, [run, updateRect]);
 
   const cleanupPrev = useCallback(() => {
-    const prevStep = steps[currentStep];
-    if (prevStep && prevStep.element) {
-      const el = document.querySelector(prevStep.element);
-      if (el) {
-        (el as HTMLElement).style.position = '';
-        (el as HTMLElement).style.zIndex = '';
-        (el as HTMLElement).style.pointerEvents = '';
-      }
-    }
-  }, [currentStep, steps]);
+    // No-op since we no longer modify target element styles
+  }, []);
 
   const handleNext = () => {
     cleanupPrev();
@@ -220,33 +208,50 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
   } else {
     // Desktop positioning
     const popoverWidth = 380;
+    const popoverHeight = 250; // Estimated max height
+    const gap = 20; // Gap between target and popover
     
     if (targetRect) {
-      // Place near element
-      let top = targetRect.bottom + 16;
+      // 1. Try Bottom
+      let top = targetRect.bottom + gap;
       let left = targetRect.left + (targetRect.width / 2);
       let transform = 'translate(-50%, 0)';
-
-      // Keep strictly within viewport horizontally
-      const halfW = popoverWidth / 2;
-      if (left - halfW < 16) left = halfW + 16;
-      if (left + halfW > window.innerWidth - 16) left = window.innerWidth - halfW - 16;
-
-      // Keep strictly within viewport vertically
-      // If it overflows the bottom of the screen, flip it above the element
-      if (top + 250 > window.innerHeight) {
-        top = targetRect.top - 16;
-        transform = 'translate(-50%, -100%)';
-        
-        // If it STILL overflows the top of the screen (element is too big), just center it on screen
-        if (top - 250 < 0) {
-          top = window.innerHeight / 2;
-          left = window.innerWidth / 2;
-          transform = 'translate(-50%, -50%)';
-        }
-      }
       
-      popoverStyle = { top: `${top}px`, left: `${left}px`, transform, width: `${popoverWidth}px` };
+      // Clamp horizontally to viewport
+      const halfW = popoverWidth / 2;
+      let clampedLeft = Math.max(halfW + 16, Math.min(window.innerWidth - halfW - 16, left));
+      
+      if (top + popoverHeight <= window.innerHeight - 16) {
+        popoverStyle = { top: `${top}px`, left: `${clampedLeft}px`, transform, width: `${popoverWidth}px` };
+      } 
+      // 2. Try Top
+      else if (targetRect.top - gap - popoverHeight >= 16) {
+        top = targetRect.top - gap;
+        transform = 'translate(-50%, -100%)';
+        popoverStyle = { top: `${top}px`, left: `${clampedLeft}px`, transform, width: `${popoverWidth}px` };
+      }
+      // 3. Try Right
+      else if (targetRect.right + gap + popoverWidth <= window.innerWidth - 16) {
+        left = targetRect.right + gap;
+        top = targetRect.top + (targetRect.height / 2);
+        transform = 'translate(0, -50%)';
+        // Clamp vertically
+        let clampedTop = Math.max(popoverHeight / 2 + 16, Math.min(window.innerHeight - popoverHeight / 2 - 16, top));
+        popoverStyle = { top: `${clampedTop}px`, left: `${left}px`, transform, width: `${popoverWidth}px` };
+      }
+      // 4. Try Left
+      else if (targetRect.left - gap - popoverWidth >= 16) {
+        left = targetRect.left - gap;
+        top = targetRect.top + (targetRect.height / 2);
+        transform = 'translate(-100%, -50%)';
+        // Clamp vertically
+        let clampedTop = Math.max(popoverHeight / 2 + 16, Math.min(window.innerHeight - popoverHeight / 2 - 16, top));
+        popoverStyle = { top: `${clampedTop}px`, left: `${left}px`, transform, width: `${popoverWidth}px` };
+      }
+      // 5. Fallback (Element is too big): Pin to bottom right
+      else {
+        popoverStyle = { bottom: '24px', right: '24px', width: `${popoverWidth}px`, transform: 'none' };
+      }
     } else {
       // Intro step (no element) -> center strictly
       popoverStyle = { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: `${popoverWidth}px` };
