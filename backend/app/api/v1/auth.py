@@ -49,7 +49,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str,
         value=access_token,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="strict",
         max_age=settings.jwt_access_token_expire_minutes * 60,
         path="/",
     )
@@ -58,7 +58,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str,
         value=refresh_token,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="strict",
         max_age=settings.jwt_refresh_token_expire_hours * 3600,
         path="/api/v1/auth/refresh",
     )
@@ -67,7 +67,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str,
         value=csrf_token,
         httponly=False,  # Readable by JS for header submission
         secure=True,
-        samesite="none",
+        samesite="strict",
         max_age=settings.jwt_refresh_token_expire_hours * 3600,
         path="/",
     )
@@ -75,9 +75,9 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str,
 
 def _clear_auth_cookies(response: Response) -> None:
     """Clear all auth cookies."""
-    response.delete_cookie("__Host-access_token", path="/", samesite="none", secure=True)
-    response.delete_cookie("__Host-refresh_token", path="/api/v1/auth/refresh", samesite="none", secure=True)
-    response.delete_cookie("__Host-csrf_token", path="/", samesite="none", secure=True)
+    response.delete_cookie("__Host-access_token", path="/", samesite="strict", secure=True)
+    response.delete_cookie("__Host-refresh_token", path="/api/v1/auth/refresh", samesite="strict", secure=True)
+    response.delete_cookie("__Host-csrf_token", path="/", samesite="strict", secure=True)
 
 
 def _check_lockout(db: Session, username: str, ip: str) -> None:
@@ -392,7 +392,7 @@ async def get_csrf(
         value=csrf_token,
         httponly=False,
         secure=True,
-        samesite="none",
+        samesite="strict",
         path="/",
     )
     return {"csrf_token": csrf_token}

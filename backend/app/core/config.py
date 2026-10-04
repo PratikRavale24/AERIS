@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 # ── Single rename constant ──────────────────────────────────────────
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     postgres_port: int = Field(default=5432)
 
     # Server
-    backend_host: str = Field(default="0.0.0.0")
+    backend_host: str = Field(default="0.0.0.0")  # nosec B104
     backend_port: int = Field(default=8000)
     backend_workers: int = Field(default=2)
 
@@ -136,9 +136,7 @@ class Settings(BaseSettings):
     def model_hmac_key(self) -> str:
         return read_secret("model_hmac_key")
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
 
 @lru_cache(maxsize=1)

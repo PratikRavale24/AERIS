@@ -115,11 +115,20 @@ def score_component(
     feature_cols = list(features.keys())
     feature_values = np.array([features[c] for c in feature_cols]).reshape(1, -1)
 
+    # Get active models from registry
+    def _get_active_model(m_type: str) -> ModelRegistry | None:
+        from sqlalchemy import desc
+        return db.query(ModelRegistry).filter_by(
+            model_type=m_type,
+            component_type=component_type,
+            is_active=True
+        ).order_by(desc(ModelRegistry.version)).first()
+
     # Risk prediction
-    risk_path = MODEL_DIR / f"risk_{component_type.lower()}_v1.joblib"
-    if risk_path.exists():
+    risk_reg = _get_active_model("risk")
+    if risk_reg and Path(risk_reg.file_path).exists():
         try:
-            risk_model = joblib.load(risk_path)
+            risk_model = _load_verified_model(risk_reg.file_path, risk_reg.file_sha256, risk_reg.file_hmac)
             risk_proba = risk_model.predict_proba(
                 pd.DataFrame([features])[[c for c in features if c in (
                     risk_model.feature_names_in_ if hasattr(risk_model, 'feature_names_in_') else features.keys()
@@ -166,10 +175,10 @@ def score_component(
             logger.warning(f"Risk scoring failed for {component_id}: {e}")
 
     # RUL prediction
-    rul_path = MODEL_DIR / f"rul_{component_type.lower()}_v1.joblib"
-    if rul_path.exists():
+    rul_reg = _get_active_model("rul")
+    if rul_reg and Path(rul_reg.file_path).exists():
         try:
-            rul_data = joblib.load(rul_path)
+            rul_data = _load_verified_model(rul_reg.file_path, rul_reg.file_sha256, rul_reg.file_hmac)
             rul_model = rul_data["model"] if isinstance(rul_data, dict) else rul_data
             feature_df = pd.DataFrame([features])
             matching_cols = [c for c in feature_df.columns if c in (
@@ -190,10 +199,10 @@ def score_component(
             logger.warning(f"RUL scoring failed for {component_id}: {e}")
 
     # Anomaly detection
-    anomaly_path = MODEL_DIR / f"anomaly_{component_type.lower()}_v1.joblib"
-    if anomaly_path.exists():
+    anomaly_reg = _get_active_model("anomaly")
+    if anomaly_reg and Path(anomaly_reg.file_path).exists():
         try:
-            anomaly_model = joblib.load(anomaly_path)
+            anomaly_model = _load_verified_model(anomaly_reg.file_path, anomaly_reg.file_sha256, anomaly_reg.file_hmac)
             feature_df = pd.DataFrame([features])
             matching_cols = [c for c in feature_df.columns if c in (
                 anomaly_model.feature_names_in_ if hasattr(anomaly_model, 'feature_names_in_') else feature_df.columns
@@ -246,11 +255,12 @@ def score_all_components(db: Session) -> list[dict[str, Any]]:
         )
         if result:
             # Save prediction to DB
+            active_risk = db.query(ModelRegistry).filter_by(model_type="risk", component_type=comp.component_type, is_active=True).first()
             prediction = Prediction(
                 id=str(uuid.uuid4()),
                 component_id=comp.component_id,
                 aircraft_id=comp.aircraft_id,
-                model_id=str(uuid.uuid4()),  # Simplified — should reference model_registry
+                model_id=active_risk.id if active_risk else str(uuid.uuid4()),
                 prediction_type="combined",
                 risk_score=result.get("risk_score"),
                 rul_q10=result.get("rul_q10"),

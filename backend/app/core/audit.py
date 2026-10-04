@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, text
 from sqlalchemy.orm import Session
 
 from app.core.crypto import canonical_json, sha256_hash_str
@@ -24,7 +24,10 @@ GENESIS_HASH = hashlib.sha256(b"VAYU-PdM-GENESIS").hexdigest()
 
 
 def _get_prev_hash(db: Session) -> str:
-    """Get the hash of the last audit entry, or genesis hash."""
+    """Get the hash of the last audit entry, or genesis hash, with lock."""
+    # Acquire transaction-level advisory lock to serialize audit writers
+    db.execute(text("SELECT pg_advisory_xact_lock(1001)"))
+
     last_entry = (
         db.query(AuditLog.entry_hash)
         .order_by(desc(AuditLog.ts))

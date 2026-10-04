@@ -382,6 +382,8 @@ def compute_baseline(
 
 def main() -> None:
     """Main training pipeline."""
+    from app.db.models import ModelRegistry
+    from app.db.session import get_session_factory
     setup_logging("INFO")
     start_time = time.time()
 
@@ -430,13 +432,46 @@ def main() -> None:
         baseline = compute_baseline(features_df, comp_type)
 
         all_results[comp_type] = {
-            "risk": risk_info.get("metrics", {}),
-            "rul": rul_info.get("metrics", {}),
-            "anomaly": anomaly_info.get("metrics", {}),
+            "risk": risk_info,
+            "rul": rul_info,
+            "anomaly": anomaly_info,
             "baseline": baseline,
             "schema_hash": schema_hash,
             "dataset_hash": dataset_hash,
         }
+
+        # Register models in database
+        factory = get_session_factory()
+        db = factory()
+        try:
+            # Deactivate old models for this component
+            db.query(ModelRegistry).filter_by(component_type=comp_type).update({"is_active": False})
+            
+            for model_type, m_info in [("risk", risk_info), ("rul", rul_info), ("anomaly", anomaly_info)]:
+                if not m_info or "file_path" not in m_info: continue
+                reg = ModelRegistry(
+                    id=str(uuid.uuid4()),
+                    model_name=f"{model_type}_{comp_type.lower()}",
+                    model_type=model_type,
+                    version=str(int(datetime.now().timestamp())),
+                    component_type=comp_type,
+                    file_path=m_info["file_path"],
+                    file_sha256=m_info["file_sha256"],
+                    file_hmac=m_info["file_hmac"],
+                    training_dataset_hash=dataset_hash,
+                    feature_schema_hash=schema_hash,
+                    metrics=m_info.get("metrics"),
+                    hyperparameters=m_info.get("hyperparameters"),
+                    is_active=True,
+                    trained_at=datetime.now(timezone.utc),
+                )
+                db.add(reg)
+            db.commit()
+        except Exception as e:
+            logger.error(f"Failed to register models in DB: {e}")
+            db.rollback()
+        finally:
+            db.close()
 
         # AI vs Baseline comparison
         if risk_info.get("metrics") and baseline:
@@ -466,7 +501,8 @@ def _generate_model_cards(results: dict[str, Any]) -> None:
 
     for comp_type, comp_results in results.items():
         for model_type in ["risk", "rul", "anomaly"]:
-            metrics = comp_results.get(model_type, {})
+            m_info = comp_results.get(model_type, {})
+            metrics = m_info.get("metrics", {}) if isinstance(m_info, dict) else {}
             if not metrics:
                 continue
 
