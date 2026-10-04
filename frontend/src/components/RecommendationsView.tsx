@@ -96,7 +96,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({ recomm
       {/* Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Queue */}
-        <div className="lg:col-span-5 space-y-3">
+        <div className="lg:col-span-5 space-y-3 tour-rec-list">
           <h3 className="text-[11px] font-semibold uppercase tracking-wider px-1"
               style={{ color: 'var(--color-text-muted)' }}>
             Prioritized Recommendations ({recommendations.length})
@@ -155,7 +155,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({ recomm
 
         {/* Right: Detail Panel */}
         {selectedRec && (
-          <div className="lg:col-span-7 rounded-panel p-6 space-y-6"
+          <div className="lg:col-span-7 rounded-panel p-6 space-y-6 tour-rec-detail"
                style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
             {/* Header */}
             <div className="pb-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>

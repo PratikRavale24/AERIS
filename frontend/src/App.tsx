@@ -42,6 +42,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState('fleet');
   const [user, setUser] = useState<{ username: string; role: string } | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [tourTrigger, setTourTrigger] = useState(0);
 
   const getPrimaryTab = (role: string) => {
     switch (role) {
@@ -295,6 +296,7 @@ export function App() {
             setUser(u);
             setActiveTab(getPrimaryTab(u.role));
             setShowLoginModal(false);
+            setTourTrigger(prev => prev + 1);
             setNotifications([{
               id: Date.now(),
               message: `Successfully authenticated as ${u.role}. Welcome, ${u.username}.`,
@@ -309,7 +311,7 @@ export function App() {
   return (
     <div className="min-h-screen flex flex-col"
          style={{ backgroundColor: 'var(--color-bg-canvas)', color: 'var(--color-text-primary)' }}>
-      {user && <OnboardingTour userRole={user.role} setActiveTab={setActiveTab} />}
+      {user && <OnboardingTour userRole={user.role} setActiveTab={setActiveTab} tourTrigger={tourTrigger} />}
       {/* Navigation Header */}
       <Header
         user={user}

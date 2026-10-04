@@ -75,7 +75,7 @@ export const AuditSecurityView: React.FC<AuditSecurityViewProps> = ({ posture, s
       </div>
 
       {/* Data Ingestion */}
-      <div className="rounded-panel p-5 space-y-4"
+      <div className="rounded-panel p-5 space-y-4 tour-data-ingestion"
            style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
         <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
           <div>
@@ -116,7 +116,7 @@ export const AuditSecurityView: React.FC<AuditSecurityViewProps> = ({ posture, s
       {/* Hash Chain + Security Checks */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Hash Chain */}
-        <div className="lg:col-span-5 rounded-panel p-5 space-y-4"
+        <div className="lg:col-span-5 rounded-panel p-5 space-y-4 tour-audit-chain"
              style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
           <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
             <h3 className="text-[13px] font-semibold flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
@@ -161,7 +161,7 @@ export const AuditSecurityView: React.FC<AuditSecurityViewProps> = ({ posture, s
         </div>
 
         {/* Security Posture */}
-        <div className="lg:col-span-7 rounded-panel p-5 space-y-4"
+        <div className="lg:col-span-7 rounded-panel p-5 space-y-4 tour-security-posture"
              style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
           <h3 className="text-[13px] font-semibold flex items-center gap-2 pb-3"
               style={{ color: 'var(--color-text-primary)', borderBottom: '1px solid var(--color-border-subtle)' }}>
@@ -191,7 +191,7 @@ export const AuditSecurityView: React.FC<AuditSecurityViewProps> = ({ posture, s
       </div>
 
       {/* Events Table */}
-      <div className="rounded-panel overflow-hidden"
+      <div className="rounded-panel overflow-hidden tour-security-events"
            style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
         <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
           <h3 className="text-[12px] font-semibold uppercase tracking-wider flex items-center gap-2"

@@ -116,7 +116,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({ summary, aircraftL
       </div>
 
       {/* Filters */}
-      <div className="rounded-panel p-4 flex flex-col md:flex-row gap-4 items-center justify-between"
+      <div className="rounded-panel p-4 flex flex-col md:flex-row gap-4 items-center justify-between tour-fleet-filters"
            style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
         <div className="relative w-full md:w-72">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
@@ -157,7 +157,7 @@ export const FleetOverview: React.FC<FleetOverviewProps> = ({ summary, aircraftL
       </div>
 
       {/* Priority Queue Table */}
-      <div className="rounded-panel overflow-hidden"
+      <div className="rounded-panel overflow-hidden tour-fleet-table"
            style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
         <div className="px-4 py-3 flex items-center justify-between"
              style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>

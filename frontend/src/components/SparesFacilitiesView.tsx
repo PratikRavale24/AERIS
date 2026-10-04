@@ -68,7 +68,7 @@ export const SparesFacilitiesView: React.FC<SparesFacilitiesViewProps> = ({ spar
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Spares Table */}
-        <div className="lg:col-span-7">
+        <div className="lg:col-span-7 tour-spares-table">
           <div className="rounded-panel overflow-hidden"
                style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)' }}>
             <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
@@ -119,7 +119,7 @@ export const SparesFacilitiesView: React.FC<SparesFacilitiesViewProps> = ({ spar
         </div>
 
         {/* Facilities */}
-        <div className="lg:col-span-5 space-y-3">
+        <div className="lg:col-span-5 space-y-3 tour-facility-cards">
           <h3 className="text-[12px] font-semibold uppercase tracking-wider flex items-center gap-2 px-1"
               style={{ color: 'var(--color-text-muted)' }}>
             <Building2 className="w-3.5 h-3.5" /> Facility Capacity
