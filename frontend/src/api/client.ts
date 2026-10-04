@@ -10,6 +10,12 @@ try {
 } catch (_) {}
 
 function getBaseUrl(): string {
+  // When running deployed in production (e.g. on Vercel), use relative URL ''
+  // so requests route through the vercel.json proxy rewrite.
+  // This guarantees 100% same-origin, avoiding all CORS, CORP, and third-party cookie restrictions.
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+    return '';
+  }
   const raw = import.meta.env.VITE_API_BASE_URL || '';
   return raw.replace(/\/+$/, '');
 }
