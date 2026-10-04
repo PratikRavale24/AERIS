@@ -16,9 +16,11 @@ const MetricTile: React.FC<{label: string; value: string; color?: string}> = ({l
 export const ModelCardsModal: React.FC<ModelCardsModalProps> = ({ onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style={{ backgroundColor: 'rgba(8,12,18,0.85)' }}>
+         style={{ backgroundColor: 'rgba(8,12,18,0.85)' }}
+         onClick={onClose}>
       <div className="max-w-3xl w-full rounded-panel p-6 space-y-6 max-h-[90vh] overflow-y-auto"
-           style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-modal)' }}>
+           style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-modal)' }}
+           onClick={(e) => e.stopPropagation()}>
         
         {/* Header */}
         <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>

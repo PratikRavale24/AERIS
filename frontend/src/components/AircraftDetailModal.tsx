@@ -48,9 +48,10 @@ export const AircraftDetailModal: React.FC<AircraftDetailModalProps> = ({ aircra
   const getRiskColor = (risk: number) => risk >= 0.7 ? 'var(--color-critical-text)' : risk >= 0.3 ? 'var(--color-caution-text)' : 'var(--color-ok-text)';
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" style={{ backgroundColor: 'rgba(8,12,18,0.8)' }}>
+    <div className="fixed inset-0 z-50 flex justify-end" style={{ backgroundColor: 'rgba(8,12,18,0.8)' }} onClick={onClose}>
       <div className="w-full max-w-4xl h-full overflow-y-auto flex flex-col"
-           style={{ backgroundColor: 'var(--color-bg-panel)', borderLeft: '1px solid var(--color-border)', boxShadow: 'var(--shadow-modal)' }}>
+           style={{ backgroundColor: 'var(--color-bg-panel)', borderLeft: '1px solid var(--color-border)', boxShadow: 'var(--shadow-modal)' }}
+           onClick={(e) => e.stopPropagation()}>
         
         {/* Header */}
         <div className="p-6 flex items-center justify-between sticky top-0 z-10"

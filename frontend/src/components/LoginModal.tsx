@@ -40,9 +40,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style={{ backgroundColor: 'rgba(8,12,18,0.85)' }}>
+         style={{ backgroundColor: 'rgba(8,12,18,0.85)' }}
+         onClick={onClose}>
       <div className="w-full max-w-lg rounded-panel overflow-hidden"
-           style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-modal)' }}>
+           style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-modal)' }}
+           onClick={(e) => e.stopPropagation()}>
         
         {/* Top accent */}
         <div className="h-1" style={{ backgroundColor: 'var(--color-primary-strong)' }} />

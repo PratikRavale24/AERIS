@@ -284,9 +284,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({ recomm
 
       {/* Override Modal */}
       {showOverrideModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(8,12,18,0.85)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(8,12,18,0.85)' }} onClick={() => setShowOverrideModal(false)}>
           <div className="max-w-md w-full p-6 rounded-panel space-y-5"
-               style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-simulation)', boxShadow: 'var(--shadow-modal)' }}>
+               style={{ backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-simulation)', boxShadow: 'var(--shadow-modal)' }}
+               onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
               <div className="flex items-center gap-2" style={{ color: 'var(--color-simulation)' }}>
                 <ShieldAlert className="w-5 h-5" />
