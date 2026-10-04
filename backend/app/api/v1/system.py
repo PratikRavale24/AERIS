@@ -30,6 +30,7 @@ async def health_check() -> dict[str, Any]:
     return {
         "status": "healthy",
         "service": APP_NAME,
+        "version": "0.1.2",
         "database": db_status,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "data_source": "SYNTHETIC_NON_OPERATIONAL",

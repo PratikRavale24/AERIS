@@ -10,10 +10,17 @@ from app.core.config import get_settings
 
 
 def get_engine():  # type: ignore[no-untyped-def]
-    """Create SQLAlchemy engine with the app role (DML only)."""
+    """Create SQLAlchemy engine with appropriate settings."""
     settings = get_settings()
+    url = settings.database_url
+    if url.startswith("sqlite"):
+        return create_engine(
+            url,
+            connect_args={"check_same_thread": False},
+            echo=False,
+        )
     return create_engine(
-        settings.database_url,
+        url,
         pool_size=10,
         max_overflow=20,
         pool_pre_ping=True,

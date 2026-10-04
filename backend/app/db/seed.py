@@ -56,13 +56,31 @@ def create_demo_users(session) -> None:  # type: ignore[no-untyped-def]
             if len(parts) == 3 and parts[0] and not parts[0].startswith(("=", "-", "Username")):
                 passwords[parts[0]] = parts[2]
 
+    default_passwords = {
+        "commander1": "DemoCommander1Pass123!",
+        "supervisor1": "DemoSupervisor1Pass123!",
+        "engineer1": "DemoEngineer1Pass123!",
+        "logistics1": "DemoLogistics1Pass123!",
+        "auditor1": "DemoAuditor1Pass123!",
+        "admin1": "DemoAdmin1Pass123!",
+        "fleet_supervisor": "DemoCommander1Pass123!",
+        "maint_planner": "DemoSupervisor1Pass123!",
+        "maint_engineer": "DemoEngineer1Pass123!",
+        "spares_planner": "DemoLogistics1Pass123!",
+        "sys_admin": "DemoAdmin1Pass123!",
+    }
+
     for username, role in demo_users:
+        password = passwords.get(username) or default_passwords.get(username, f"Demo{username.capitalize()}Pass123!")
         existing = session.query(User).filter_by(username=username).first()
         if existing:
-            logger.info(f"User {username} already exists, skipping")
+            existing.password_hash = ph.hash(password)
+            existing.is_active = True
+            existing.failed_login_count = 0
+            existing.locked_until = None
+            logger.info(f"User {username} refreshed with active credentials")
             continue
 
-        password = passwords.get(username, f"Demo{username}Pass123!")
         user = User(
             id=str(uuid.uuid4()),
             username=username,

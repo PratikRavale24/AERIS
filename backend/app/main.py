@@ -49,15 +49,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         from app.db.models import Base
         from app.db.session import get_engine, get_session_factory
-        from app.db.seed import create_demo_users
         engine = get_engine()
         Base.metadata.create_all(bind=engine)
+        logger.info("Database schema verified at startup")
+    except Exception as e:
+        logger.error(f"Base.metadata.create_all error: {e}", exc_info=True)
+        try:
+            from app.db.models import User, RefreshToken, LoginAttempt, StepupToken, SecurityEvent
+            User.__table__.create(bind=engine, checkfirst=True)
+            RefreshToken.__table__.create(bind=engine, checkfirst=True)
+            LoginAttempt.__table__.create(bind=engine, checkfirst=True)
+            StepupToken.__table__.create(bind=engine, checkfirst=True)
+            SecurityEvent.__table__.create(bind=engine, checkfirst=True)
+            logger.info("Core auth tables created via fallback")
+        except Exception as e2:
+            logger.error(f"Fallback table creation error: {e2}")
+
+    try:
+        from app.db.session import get_session_factory
+        from app.db.seed import create_demo_users
         factory = get_session_factory()
         with factory() as session:
             create_demo_users(session)
-        logger.info("Database schema and demo users verified at startup")
+        logger.info("Demo users seeded and verified at startup")
     except Exception as e:
-        logger.warning(f"Database auto-init warning: {e}")
+        logger.error(f"Demo users seeding error: {e}", exc_info=True)
 
     yield
 
@@ -94,7 +110,7 @@ def create_app() -> FastAPI:
             "Predictions are not airworthiness or release-to-service decisions "
             "and are not validated for operational aircraft."
         ),
-        version="0.1.1",
+        version="0.1.2",
         docs_url="/api/docs" if settings.app_env == "development" else None,
         redoc_url="/api/redoc" if settings.app_env == "development" else None,
         openapi_url="/api/openapi.json" if settings.app_env == "development" else None,
