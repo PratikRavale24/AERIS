@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 interface TourStep {
   element: string | null;
@@ -10,100 +10,108 @@ interface TourStep {
 interface OnboardingTourProps {
   userRole: string;
   setActiveTab: (tab: string) => void;
-  tourTrigger: number; // incremented on each login to re-trigger tour
+  tourTrigger: number;
 }
 
 export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setActiveTab, tourTrigger }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [run, setRun] = useState(false);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  
+  // Track if we've already scrolled for the current step to prevent glitching
+  const scrolledForStep = useRef(-1);
 
-  // Trigger tour on every login (tourTrigger changes)
   useEffect(() => {
     if (tourTrigger > 0) {
       setCurrentStep(0);
+      scrolledForStep.current = -1;
+      setTargetRect(null);
       setTimeout(() => setRun(true), 600);
     }
   }, [tourTrigger]);
 
   const buildSteps = useCallback((): TourStep[] => {
+    const roleIntros: Record<string, string> = {
+      'FLEET_SUPERVISOR': 'As a Fleet Supervisor, your goal is to maximize overall fleet readiness, monitor high-risk assets, and authorize critical maintenance decisions.',
+      'MAINT_PLANNER': 'As a Maintenance Planner, you orchestrate repair schedules by reviewing AI recommendations and ensuring spare parts and facility slots are ready.',
+      'MAINT_ENGINEER': 'As a Maintenance Engineer, you execute and validate AI-driven repair instructions, providing operational rationale for every action.',
+      'SPARES_PLANNER': 'As a Spares Planner, you monitor critical inventory levels, track procurement lead times, and prevent parts shortages from delaying repairs.',
+      'SYS_ADMIN': 'As a System Administrator, you monitor the cryptographic integrity of the audit chain, security events, and air-gapped system posture.',
+    };
+
     const common: TourStep = {
       element: null,
       title: 'Welcome to AERIS',
-      desc: 'Aircraft Engine Reliability Intelligence System — your AI-powered predictive maintenance platform for defense fleet readiness. Let\'s walk through the key features.',
-      action: null,
+      desc: roleIntros[userRole] || 'Welcome to the Aircraft Engine Reliability Intelligence System.',
+      action: () => setActiveTab(userRole === 'SYS_ADMIN' ? 'security' : userRole === 'SPARES_PLANNER' ? 'spares' : userRole === 'MAINT_PLANNER' ? 'recommendations' : 'fleet'),
     };
 
     if (userRole === 'FLEET_SUPERVISOR') {
       return [
         common,
-        // Fleet Overview tab
-        { element: '.tour-kpi-row', title: 'Fleet KPI Dashboard', desc: 'Total Aircraft: number of monitored assets. Fleet Availability: percentage of FMC + PMC aircraft. High Risk Assets: aircraft with failure probability ≥ 70%. Pending Actions: decisions awaiting your authorization. Spare Shortages: parts where lead time exceeds RUL.', action: () => setActiveTab('fleet') },
-        { element: '.tour-fleet-filters', title: 'Search & Filters', desc: 'Search by tail number, platform type, or base location. Filter by fleet type (Su-30MKI, Rafale, Tejas, etc.) and risk level (High/Medium/Low). Export filtered data to CSV for reports.', action: null },
-        { element: '.tour-fleet-table', title: 'Fleet Asset Register', desc: 'Each row shows: Tail Number (aircraft ID), Platform type, Base, Status (FMC = Fully Mission Capable, PMC = Partially, NMC = Non-Mission Capable), Failure Risk (AI-predicted probability with progress bar), Est. RUL (Remaining Useful Life in cycles), and Flight Hours. Click any row to open the Digital Twin detail modal.', action: null },
-        // Switch to Maintenance Queue
-        { element: null, title: 'Maintenance Queue', desc: 'Now let\'s look at the AI-driven Maintenance Queue where you authorize decisions.', action: () => setActiveTab('recommendations') },
-        { element: '.tour-rec-list', title: 'Recommendation Cards', desc: 'Each card shows an AI-generated maintenance recommendation sorted by priority. The badge color indicates urgency: CRITICAL (red), HIGH (orange), MEDIUM (yellow). Shows the aircraft ID, component, and recommended action.', action: null },
-        { element: '.tour-rec-detail', title: 'Recommendation Detail Panel', desc: 'When you select a recommendation, this panel shows: Priority Score (0–100), Risk Score (failure probability), Estimated RUL range (P10/P50/P90 confidence intervals), Trust Score (AI model confidence), and the Recommended Action.', action: null },
-        { element: '.tour-record-decision', title: 'Record Decision', desc: 'This is your decision workspace. Type an operational rationale (minimum 15 characters), then click Accept, Defer, Reject, or Override. The AI recommends — the human decides. Every decision is cryptographically logged to the audit chain.', action: null },
-        { element: '.tour-evidence', title: 'Evidence Passport', desc: 'Each recommendation has a SHA-256 evidence passport that cryptographically binds the AI prediction, sensor data, and your decision together. This ensures full traceability and tamper-proof audit compliance.', action: null },
+        { element: null, title: 'Fleet Overview Window', desc: 'This window gives you a bird\'s-eye view of your entire aircraft fleet. It highlights overall readiness and assets that need immediate attention.', action: () => setActiveTab('fleet') },
+        { element: '.tour-kpi-row', title: 'Fleet KPI Dashboard', desc: 'Quickly check your Total Aircraft, Fleet Availability, and High Risk Assets (failure probability ≥ 70%).', action: null },
+        { element: '.tour-fleet-filters', title: 'Search & Filters', desc: 'Filter your fleet by platform type (e.g., Su-30MKI) or risk level. You can also export this view to CSV.', action: null },
+        { element: '.tour-fleet-table', title: 'Asset Register', desc: 'Displays each aircraft\'s status, AI-predicted failure risk, and estimated remaining useful life (RUL).', action: null },
+        { element: null, title: 'Maintenance Queue Window', desc: 'This window is where AI-driven predictive maintenance recommendations are queued for your authorization.', action: () => setActiveTab('recommendations') },
+        { element: '.tour-rec-list', title: 'Prioritized Queue', desc: 'Recommendations are automatically sorted by priority. CRITICAL items (red) require immediate action.', action: null },
+        { element: '.tour-rec-detail', title: 'AI Analysis', desc: 'View the detailed failure probability (Risk Score) and RUL confidence intervals (P10/P50/P90) generated by the ML model.', action: null },
+        { element: '.tour-record-decision', title: 'Authorize Decisions', desc: 'Enter your operational rationale here and click Accept, Defer, or Reject. Your decision overrides or confirms the AI.', action: null },
+        { element: '.tour-evidence', title: 'Evidence Passport', desc: 'Every decision creates a cryptographically secure SHA-256 hash, ensuring a tamper-proof audit trail for defense compliance.', action: null },
       ];
     }
 
     if (userRole === 'MAINT_PLANNER') {
       return [
         common,
-        // Start on Maintenance Queue (primary tab)
-        { element: null, title: 'Maintenance Queue', desc: 'Your primary workspace for reviewing and acting on AI maintenance recommendations.', action: () => setActiveTab('recommendations') },
-        { element: '.tour-rec-list', title: 'Priority-Sorted Queue', desc: 'Recommendations are sorted by priority score. CRITICAL items appear first. Each card shows the aircraft, component, and recommended action. Click a card to see full details.', action: null },
-        { element: '.tour-rec-detail', title: 'AI Analysis Detail', desc: 'The detail panel shows: Priority Score, Risk Score (failure probability from the ML model), RUL estimates (P10/P50/P90 confidence), Trust Score, and the Recommended Action with reason codes (RUL_CRITICAL, ANOMALY_DETECTED, etc.).', action: null },
-        { element: '.tour-record-decision', title: 'Record Your Decision', desc: 'Enter your operational rationale and click Accept, Defer, or Reject. Try it now! Every decision is hash-chained to the audit log. The Override button requires dual-authorization.', action: null },
-        { element: '.tour-evidence', title: 'Evidence Passport', desc: 'Cryptographic proof linking AI prediction → sensor data → your decision. SHA-256 hash-chain ensures tamper-proof compliance for Ministry of Defense audits.', action: null },
-        // Switch to Spares
-        { element: null, title: 'Spare Readiness', desc: 'Let\'s check component availability before scheduling maintenance.', action: () => setActiveTab('spares') },
-        { element: '.tour-spares-table', title: 'Spares Inventory', desc: 'Shows Part Number, Criticality level, current Stock vs Minimum required, Lead Time (days for procurement), and Readiness status (READY, LIMITED, SHORTAGE). Red items need immediate procurement action.', action: null },
-        { element: '.tour-facility-cards', title: 'Facility Capacity', desc: 'Each card shows a maintenance facility with: name, facility ID, available slots, average turnaround time in days, and the capabilities it supports. Use this to plan scheduling.', action: null },
+        { element: null, title: 'Maintenance Queue Window', desc: 'This is your main workspace for reviewing AI risk assessments and planning upcoming maintenance tasks.', action: () => setActiveTab('recommendations') },
+        { element: '.tour-rec-list', title: 'Recommendation Queue', desc: 'Sorted by urgency. Look for items with a SHORTAGE in part status, as these will delay repairs.', action: null },
+        { element: '.tour-rec-detail', title: 'Detailed Analysis', desc: 'Review the AI\'s confidence (Trust Score) and the exact component that requires replacement or inspection.', action: null },
+        { element: '.tour-record-decision', title: 'Record Decision', desc: 'Authorize the work by typing a rationale and selecting an action. This is required before work orders are generated.', action: null },
+        { element: null, title: 'Spares & Facilities Window', desc: 'Before finalizing a plan, use this window to check if you have the required parts and hangar space.', action: () => setActiveTab('spares') },
+        { element: '.tour-spares-table', title: 'Inventory Readiness', desc: 'Tracks current stock vs minimum thresholds. Items marked SHORTAGE (red) have lead times exceeding the aircraft\'s RUL.', action: null },
+        { element: '.tour-facility-cards', title: 'Facility Capacity', desc: 'Check available hangar slots and average turnaround times to optimally route aircraft for repair.', action: null },
       ];
     }
 
     if (userRole === 'MAINT_ENGINEER') {
       return [
         common,
-        { element: null, title: 'Maintenance Queue', desc: 'Review AI-generated maintenance recommendations assigned to your role.', action: () => setActiveTab('recommendations') },
-        { element: '.tour-rec-list', title: 'Assigned Recommendations', desc: 'Cards sorted by priority. CRITICAL (red) items need immediate attention. Each shows the aircraft, component, and the AI-recommended action.', action: null },
-        { element: '.tour-rec-detail', title: 'Detailed Analysis', desc: 'View the AI\'s full analysis: Priority Score, Risk Score (ML failure probability), Remaining Useful Life estimates with confidence intervals, and Trust Score.', action: null },
-        { element: '.tour-record-decision', title: 'Record Decision', desc: 'Provide your operational rationale and record your decision. Accept to approve maintenance, Defer to postpone, or Reject with reasoning.', action: null },
-        { element: '.tour-evidence', title: 'Evidence Passport', desc: 'SHA-256 hash-chained audit trail. Every recommendation and decision is cryptographically bound for defense-grade traceability.', action: null },
+        { element: null, title: 'Maintenance Queue Window', desc: 'Here you will find all the AI-generated work orders and recommendations assigned to your engineering team.', action: () => setActiveTab('recommendations') },
+        { element: '.tour-rec-list', title: 'Assigned Tasks', desc: 'Your prioritized list of tasks. CRITICAL items represent high-risk anomalies detected by engine sensors.', action: null },
+        { element: '.tour-rec-detail', title: 'AI Diagnostics', desc: 'Read the specific reason codes (e.g., ANOMALY_DETECTED) and RUL estimates to understand why the AI flagged this component.', action: null },
+        { element: '.tour-record-decision', title: 'Execution Log', desc: 'Provide your engineering rationale here after inspection, and record whether the AI\'s recommendation was accepted or deferred.', action: null },
+        { element: '.tour-evidence', title: 'Tamper-Proof Audit', desc: 'Your engineering sign-off is permanently hashed and stored securely in the evidence passport.', action: null },
       ];
     }
 
     if (userRole === 'SPARES_PLANNER') {
       return [
         common,
-        { element: null, title: 'Spare Readiness', desc: 'Your primary workspace for managing spare part inventory and facility capacity.', action: () => setActiveTab('spares') },
-        { element: '.tour-spares-table', title: 'Spares Inventory Table', desc: 'Part Number: unique identifier. Criticality: CRITICAL/HIGH/MEDIUM/LOW. Stock/Min: current stock vs minimum threshold. Lead Time: procurement duration in days. Readiness: READY (green), LIMITED (yellow), SHORTAGE (red).', action: null },
-        { element: '.tour-facility-cards', title: 'Facility Capacity', desc: 'Maintenance facilities with available bay slots, turnaround time, and supported capabilities. Green badge = slots available, red = at capacity.', action: null },
-        // Switch to Maintenance Queue for context
-        { element: null, title: 'Maintenance Queue', desc: 'Let\'s see the maintenance recommendations that drive spare part demand.', action: () => setActiveTab('recommendations') },
-        { element: '.tour-rec-list', title: 'Recommendation Queue', desc: 'These AI recommendations determine which parts are needed. The Part Status column links directly to your inventory — SHORTAGE means procurement is required before maintenance can proceed.', action: null },
+        { element: null, title: 'Spares & Facilities Window', desc: 'Your control center for inventory management and supply chain logistics.', action: () => setActiveTab('spares') },
+        { element: '.tour-spares-table', title: 'Inventory Tracker', desc: 'Monitor part criticality and stock levels. Focus on parts where the procurement Lead Time is high.', action: null },
+        { element: '.tour-facility-cards', title: 'Hangar Utilization', desc: 'Ensure that facilities have the required capabilities and open slots before parts are dispatched.', action: null },
+        { element: null, title: 'Maintenance Queue Window', desc: 'Check this window to anticipate future spare part demand based on AI predictions.', action: () => setActiveTab('recommendations') },
+        { element: '.tour-rec-list', title: 'Demand Forecasting', desc: 'These upcoming recommendations dictate which parts you need to order today to avoid future AOG (Aircraft on Ground) situations.', action: null },
       ];
     }
 
     if (userRole === 'SYS_ADMIN') {
       return [
         common,
-        { element: null, title: 'Audit & Security Dashboard', desc: 'Your primary workspace for monitoring system security and cryptographic integrity.', action: () => setActiveTab('security') },
-        { element: '.tour-security-posture', title: 'Security Posture Checks', desc: 'Live status of all security controls: TLS 1.2/1.3, Cookie Security Flags (HttpOnly, Secure, SameSite), Content Security Policy, Server-Side RBAC, Audit Chain Hash Integrity, Air-Gapped Egress Isolation, AES-256-GCM Field Encryption, and ML Model HMAC Integrity.', action: null },
-        { element: '.tour-audit-chain', title: 'Cryptographic Audit Chain', desc: 'Verifies the SHA-256 hash chain integrity across all maintenance decisions. Shows total entries, verified entries, and chain status. Click "Verify Chain" to run a live integrity check.', action: null },
-        { element: '.tour-security-events', title: 'Security Event Log', desc: 'Real-time log of system events: authentication attempts, hash chain verifications, egress probe results, and infrastructure events. Each event shows type, severity, description, and timestamp.', action: null },
-        { element: '.tour-data-ingestion', title: 'Data Ingestion', desc: 'Upload and validate sensor data files against the Appendix A Data Contract schema. The system validates file structure, required columns, and data types before ingestion.', action: null },
+        { element: null, title: 'Audit & Security Window', desc: 'This dashboard provides real-time monitoring of the system\'s cryptographic integrity and air-gap network posture.', action: () => setActiveTab('security') },
+        { element: '.tour-security-posture', title: 'Security Checks', desc: 'Live validation of TLS, Content Security Policies, RBAC, and AES-256 field-level encryption.', action: null },
+        { element: '.tour-audit-chain', title: 'Hash Chain Verification', desc: 'Monitors the unbroken SHA-256 chain of maintenance decisions. Click Verify to manually run an integrity check.', action: null },
+        { element: '.tour-data-ingestion', title: 'Secure Data Ingestion', desc: 'Upload raw sensor CSVs here. The system validates them against the strict Appendix A Data Contract before ingestion.', action: null },
+        { element: '.tour-security-events', title: 'Event Log', desc: 'A chronological, immutable log of all authentication attempts and infrastructure security events.', action: null },
       ];
     }
 
-    // Default / unknown role
+    // Default
     return [
       common,
-      { element: '.tour-kpi-row', title: 'Fleet Dashboard', desc: 'Overview of fleet health metrics including total aircraft, availability rate, high-risk assets, and pending maintenance actions.', action: () => setActiveTab('fleet') },
+      { element: null, title: 'Fleet Overview Window', desc: 'A high-level view of your aircraft and their readiness.', action: () => setActiveTab('fleet') },
+      { element: '.tour-kpi-row', title: 'Key Metrics', desc: 'Monitor availability and risk across the entire fleet.', action: null },
     ];
   }, [userRole, setActiveTab]);
 
@@ -112,12 +120,19 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
   const updateRect = useCallback(() => {
     if (!run || currentStep >= steps.length) return;
     const step = steps[currentStep];
+    
     if (step.element) {
       const el = document.querySelector(step.element);
       if (el) {
         const rect = el.getBoundingClientRect();
         setTargetRect(rect);
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Only scroll ONCE per step to prevent glitching/jittering
+        if (scrolledForStep.current !== currentStep) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          scrolledForStep.current = currentStep;
+        }
+
         (el as HTMLElement).style.position = 'relative';
         (el as HTMLElement).style.zIndex = '999999';
         (el as HTMLElement).style.pointerEvents = 'auto';
@@ -129,13 +144,20 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
 
   useEffect(() => {
     window.addEventListener('resize', updateRect);
-    return () => window.removeEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, { passive: true });
+    return () => {
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect);
+    };
   }, [updateRect]);
 
+  // Use a fast interval to track dynamic DOM changes (like tab switching)
+  // but since scrollIntoView is gated by scrolledForStep, it won't glitch.
   useEffect(() => {
-    const interval = setInterval(updateRect, 250);
+    if (!run) return;
+    const interval = setInterval(updateRect, 100);
     return () => clearInterval(interval);
-  }, [updateRect]);
+  }, [run, updateRect]);
 
   const cleanupPrev = useCallback(() => {
     const prevStep = steps[currentStep];
@@ -172,6 +194,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
         prevStep.action();
       }
       setCurrentStep(prevIdx);
+      scrolledForStep.current = -1; // Force re-scroll if going back
     }
   };
 
@@ -184,41 +207,56 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
 
   const step = steps[currentStep];
 
-  // Calculate responsive popover position
+  // Calculate strict responsive popover positioning
   const isMobile = window.innerWidth < 640;
-  const popoverWidth = isMobile ? 'calc(100vw - 32px)' : '380px';
-  let popoverStyle: React.CSSProperties;
+  let popoverStyle: React.CSSProperties = {};
 
-  if (targetRect && !isMobile) {
-    // Desktop: position near the element
-    let top = targetRect.bottom + 16;
-    let left = targetRect.left + (targetRect.width / 2);
-    let transform = 'translate(-50%, 0)';
-
-    // Clamp left so popover doesn't go off-screen
-    const halfW = 190;
-    if (left - halfW < 16) left = halfW + 16;
-    if (left + halfW > window.innerWidth - 16) left = window.innerWidth - halfW - 16;
-
-    // If it goes off bottom, place above
-    if (targetRect.bottom + 240 > window.innerHeight) {
-      top = targetRect.top - 16;
-      transform = 'translate(-50%, -100%)';
-    }
-
-    popoverStyle = { top: `${top}px`, left: `${left}px`, transform, width: popoverWidth };
-  } else if (targetRect && isMobile) {
-    // Mobile: fixed at bottom with small offset
+  if (isMobile) {
+    // On mobile, always fix to bottom so it never overflows horizontally or covers elements unpredictably
     popoverStyle = {
       bottom: '16px', left: '16px', right: '16px', width: 'auto',
       transform: 'none',
     };
   } else {
-    // No element: center on screen
-    popoverStyle = isMobile
-      ? { bottom: '16px', left: '16px', right: '16px', width: 'auto', transform: 'none' }
-      : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: popoverWidth };
+    // Desktop positioning
+    const popoverWidth = 380;
+    
+    if (targetRect) {
+      // Place near element
+      let top = targetRect.bottom + 16;
+      let left = targetRect.left + (targetRect.width / 2);
+      let transform = 'translate(-50%, 0)';
+
+      // Keep strictly within viewport horizontally
+      const halfW = popoverWidth / 2;
+      if (left - halfW < 16) left = halfW + 16;
+      if (left + halfW > window.innerWidth - 16) left = window.innerWidth - halfW - 16;
+
+      // Keep strictly within viewport vertically
+      // If it overflows the bottom of the screen, flip it above the element
+      if (top + 250 > window.innerHeight) {
+        top = targetRect.top - 16;
+        transform = 'translate(-50%, -100%)';
+        
+        // If it STILL overflows the top of the screen (element is too big), just center it on screen
+        if (top - 250 < 0) {
+          top = window.innerHeight / 2;
+          left = window.innerWidth / 2;
+          transform = 'translate(-50%, -50%)';
+        }
+      }
+      
+      popoverStyle = { top: `${top}px`, left: `${left}px`, transform, width: `${popoverWidth}px` };
+    } else {
+      // Intro step (no element) -> center strictly
+      popoverStyle = { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: `${popoverWidth}px` };
+    }
   }
+
+  // Safe clipPath for the overlay
+  const clipPath = targetRect 
+    ? `polygon(0% 0%, 0% 100%, ${Math.max(0, targetRect.left - 8)}px 100%, ${Math.max(0, targetRect.left - 8)}px ${Math.max(0, targetRect.top - 8)}px, ${Math.min(window.innerWidth, targetRect.right + 8)}px ${Math.max(0, targetRect.top - 8)}px, ${Math.min(window.innerWidth, targetRect.right + 8)}px ${Math.min(window.innerHeight, targetRect.bottom + 8)}px, ${Math.max(0, targetRect.left - 8)}px ${Math.min(window.innerHeight, targetRect.bottom + 8)}px, ${Math.max(0, targetRect.left - 8)}px 100%, 100% 100%, 100% 0%)`
+    : 'none';
 
   return (
     <>
@@ -228,10 +266,9 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           zIndex: 999998,
           pointerEvents: targetRect ? 'none' : 'auto',
-          background: targetRect ? 'transparent' : 'rgba(0,0,0,0.65)',
-          clipPath: targetRect
-            ? `polygon(0% 0%, 0% 100%, ${Math.max(0, targetRect.left - 8)}px 100%, ${Math.max(0, targetRect.left - 8)}px ${Math.max(0, targetRect.top - 8)}px, ${Math.min(window.innerWidth, targetRect.right + 8)}px ${Math.max(0, targetRect.top - 8)}px, ${Math.min(window.innerWidth, targetRect.right + 8)}px ${Math.min(window.innerHeight, targetRect.bottom + 8)}px, ${Math.max(0, targetRect.left - 8)}px ${Math.min(window.innerHeight, targetRect.bottom + 8)}px, ${Math.max(0, targetRect.left - 8)}px 100%, 100% 100%, 100% 0%)`
-            : 'none',
+          background: targetRect ? 'transparent' : 'rgba(0,0,0,0.7)',
+          boxShadow: targetRect ? '0 0 0 9999px rgba(0,0,0,0.7)' : 'none',
+          clipPath,
           transition: 'all 0.3s ease',
         }}
       />
@@ -243,16 +280,16 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
           backgroundColor: 'var(--color-bg-panel)',
           border: '1px solid var(--color-border)',
           zIndex: 999999,
-          maxHeight: isMobile ? '60vh' : '80vh',
+          maxHeight: isMobile ? '60vh' : '85vh',
           overflowY: 'auto',
-          transition: 'top 0.3s ease, left 0.3s ease, bottom 0.3s ease',
+          transition: 'top 0.3s ease, left 0.3s ease, bottom 0.3s ease, transform 0.3s ease',
           ...popoverStyle,
         }}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-bold" style={{ color: 'var(--color-text-primary)' }}>
+            <h3 className="text-base font-bold leading-tight" style={{ color: 'var(--color-text-primary)' }}>
               {step.title}
             </h3>
           </div>
@@ -281,7 +318,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
         </p>
 
         {/* Buttons */}
-        <div className="flex items-center justify-between gap-2 pt-1">
+        <div className="flex items-center justify-between gap-2 pt-2 mt-auto">
           <button
             onClick={handleSkip}
             className="text-[12px] font-medium hover:underline transition-colors"
@@ -309,7 +346,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
               className="px-4 py-1.5 text-[12px] font-semibold text-white rounded-lg transition-transform hover:scale-105 active:scale-95"
               style={{ backgroundColor: 'var(--color-primary-strong)' }}
             >
-              {currentStep === steps.length - 1 ? 'Get Started' : 'Next'}
+              {currentStep === steps.length - 1 ? 'Finish' : 'Next'}
             </button>
           </div>
         </div>
