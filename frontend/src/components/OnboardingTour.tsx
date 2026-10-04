@@ -278,6 +278,25 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ userRole, setAct
         }}
       />
 
+      {/* Glowing Highlight Box */}
+      {targetRect && (
+        <div
+          style={{
+            position: 'fixed',
+            top: targetRect.top - 6,
+            left: targetRect.left - 6,
+            width: targetRect.width + 12,
+            height: targetRect.height + 12,
+            border: '2px solid var(--color-primary)',
+            boxShadow: '0 0 20px rgba(56, 189, 248, 0.4), inset 0 0 10px rgba(56, 189, 248, 0.2)',
+            borderRadius: '12px',
+            zIndex: 999998,
+            pointerEvents: 'none',
+            transition: 'all 0.3s ease',
+          }}
+        />
+      )}
+
       {/* Popover Card */}
       <div
         className="fixed p-5 rounded-xl shadow-2xl flex flex-col gap-3"
