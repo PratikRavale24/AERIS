@@ -34,6 +34,11 @@ def get_session_factory() -> sessionmaker[Session]:
     return _session_factory
 
 
+def SessionLocal() -> Session:
+    """Convenience callable to get a new DB session."""
+    return get_session_factory()()
+
+
 def get_db() -> Generator[Session, None, None]:
     """FastAPI dependency: yields a DB session and ensures cleanup."""
     factory = get_session_factory()

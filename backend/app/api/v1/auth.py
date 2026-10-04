@@ -41,15 +41,22 @@ logger = get_logger("auth")
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _set_auth_cookies(response: Response, access_token: str, refresh_token: str, csrf_token: str) -> None:
-    """Set HttpOnly, Secure, SameSite=Strict cookies with __Host- prefix."""
+def _get_samesite() -> str:
+    return os.environ.get("COOKIE_SAMESITE", "none").lower()
+
+
+def _set_auth_cookies(
+    response: Response, access_token: str, refresh_token: str, csrf_token: str
+) -> None:
+    """Set HttpOnly, Secure cookies with __Host- prefix."""
     settings = get_settings()
+    samesite = _get_samesite()
     response.set_cookie(
         key="__Host-access_token",
         value=access_token,
         httponly=True,
         secure=True,
-        samesite="strict",
+        samesite=samesite,
         max_age=settings.jwt_access_token_expire_minutes * 60,
         path="/",
     )
@@ -58,7 +65,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str,
         value=refresh_token,
         httponly=True,
         secure=True,
-        samesite="strict",
+        samesite=samesite,
         max_age=settings.jwt_refresh_token_expire_hours * 3600,
         path="/api/v1/auth/refresh",
     )
@@ -67,7 +74,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str,
         value=csrf_token,
         httponly=False,  # Readable by JS for header submission
         secure=True,
-        samesite="strict",
+        samesite=samesite,
         max_age=settings.jwt_refresh_token_expire_hours * 3600,
         path="/",
     )
@@ -75,9 +82,10 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str,
 
 def _clear_auth_cookies(response: Response) -> None:
     """Clear all auth cookies."""
-    response.delete_cookie("__Host-access_token", path="/", samesite="strict", secure=True)
-    response.delete_cookie("__Host-refresh_token", path="/api/v1/auth/refresh", samesite="strict", secure=True)
-    response.delete_cookie("__Host-csrf_token", path="/", samesite="strict", secure=True)
+    samesite = _get_samesite()
+    response.delete_cookie("__Host-access_token", path="/", samesite=samesite, secure=True)
+    response.delete_cookie("__Host-refresh_token", path="/api/v1/auth/refresh", samesite=samesite, secure=True)
+    response.delete_cookie("__Host-csrf_token", path="/", samesite=samesite, secure=True)
 
 
 def _check_lockout(db: Session, username: str, ip: str) -> None:
@@ -205,6 +213,8 @@ async def login(
     return {
         "message": "Login successful",
         "user": {"id": user.id, "username": user.username, "role": user.role},
+        "access_token": access_token,
+        "csrf_token": csrf_token,
     }
 
 
@@ -387,12 +397,13 @@ async def get_csrf(
 ) -> dict[str, str]:
     """Get a CSRF token."""
     csrf_token = generate_csrf_token()
+    samesite = _get_samesite()
     response.set_cookie(
         key="__Host-csrf_token",
         value=csrf_token,
         httponly=False,
         secure=True,
-        samesite="strict",
+        samesite=samesite,
         path="/",
     )
     return {"csrf_token": csrf_token}

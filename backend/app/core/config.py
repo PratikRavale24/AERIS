@@ -84,57 +84,88 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         """Build the database URL using the app role (DML only) or full env URL."""
         if os.environ.get("DATABASE_URL"):
-            url = os.environ.get("DATABASE_URL")
+            url = os.environ.get("DATABASE_URL", "")
             if url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+            elif url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
             return url
+        # If running in local docker compose with 'postgres' host
         password = read_secret("db_password")
-        return (
-            f"postgresql+psycopg2://vayu_app:{password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        )
+        if os.environ.get("POSTGRES_HOST") or Path("/run/secrets").exists():
+            return (
+                f"postgresql+psycopg2://vayu_app:{password}"
+                f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+            )
+        # Fallback to local persistent SQLite if neither DATABASE_URL nor local postgres container is configured
+        sqlite_dir = Path("/app/data")
+        if sqlite_dir.exists():
+            return f"sqlite:////app/data/{self.postgres_db}.db"
+        return f"sqlite:///./{self.postgres_db}.db"
 
     @property
     def database_url_async(self) -> str:
         """Build the async database URL."""
         if os.environ.get("DATABASE_URL"):
-            url = os.environ.get("DATABASE_URL")
+            url = os.environ.get("DATABASE_URL", "")
             if url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql+asyncpg://", 1)
             elif url.startswith("postgresql+psycopg2://"):
                 url = url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
             return url
         password = read_secret("db_password")
-        return (
-            f"postgresql+asyncpg://vayu_app:{password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        )
+        if os.environ.get("POSTGRES_HOST") or Path("/run/secrets").exists():
+            return (
+                f"postgresql+asyncpg://vayu_app:{password}"
+                f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+            )
+        return self.database_url
 
     @property
     def migrator_database_url(self) -> str:
         """Build the database URL using the migrator role (DDL)."""
         if os.environ.get("DATABASE_URL"):
-            url = os.environ.get("DATABASE_URL")
+            url = os.environ.get("DATABASE_URL", "")
             if url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+            elif url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
             return url
         password = read_secret("db_migrator_password")
-        return (
-            f"postgresql+psycopg2://vayu_migrator:{password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        )
+        if os.environ.get("POSTGRES_HOST") or Path("/run/secrets").exists():
+            return (
+                f"postgresql+psycopg2://vayu_migrator:{password}"
+                f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+            )
+        return self.database_url
 
     @property
     def jwt_signing_key(self) -> str:
-        return read_secret("jwt_signing_key")
+        key = read_secret("jwt_signing_key")
+        if not key:
+            key = os.environ.get("JWT_SECRET", "aeris-secure-jwt-signing-fallback-key-for-cloud-deployments-32bytes-min")
+        return key
 
     @property
     def aes_encryption_config(self) -> dict[str, Any]:
-        return read_json_secret("aes_encryption_key")
+        cfg = read_json_secret("aes_encryption_key")
+        if not cfg:
+            return {
+                "active_kid": "v1",
+                "keys": {
+                    "v1": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                }
+            }
+        return cfg
 
     @property
     def model_hmac_key(self) -> str:
-        return read_secret("model_hmac_key")
+        key = read_secret("model_hmac_key")
+        if not key:
+            key = os.environ.get("HMAC_SECRET", "aeris-model-hmac-fallback-key-32bytes-long-min-length")
+        return key
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 

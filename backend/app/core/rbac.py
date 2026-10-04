@@ -184,8 +184,12 @@ async def get_current_user(request: Request) -> CurrentUser:
     
     This is the core authentication dependency. All protected routes use this.
     """
-    # Read token from HttpOnly cookie
+    # Read token from HttpOnly cookie or Authorization header fallback
     token = request.cookies.get("__Host-access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

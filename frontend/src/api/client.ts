@@ -3,11 +3,25 @@
  */
 
 let csrfToken: string | null = null;
+let accessToken: string | null = null;
+
+try {
+  accessToken = localStorage.getItem('aeris_access_token');
+} catch (_) {}
+
+function getBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_BASE_URL || '';
+  return raw.replace(/\/+$/, '');
+}
 
 export async function fetchCsrfToken(): Promise<string> {
   try {
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-    const res = await fetch(`${BASE_URL}/api/v1/auth/csrf`, { credentials: 'include' });
+    const BASE_URL = getBaseUrl();
+    const headers: Record<string, string> = {};
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+    const res = await fetch(`${BASE_URL}/api/v1/auth/csrf`, { credentials: 'include', headers });
     if (res.ok) {
       const data = await res.json();
       csrfToken = data.csrf_token;
@@ -23,13 +37,18 @@ export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-  const url = `${BASE_URL}${endpoint}`;
+  const BASE_URL = getBaseUrl();
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${BASE_URL}${cleanEndpoint}`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
+
+  if (accessToken && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
 
   const method = (options.method || 'GET').toUpperCase();
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
@@ -50,8 +69,20 @@ export async function apiRequest<T = any>(
   if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/refresh')) {
     // Attempt token refresh
     try {
-      const refreshRes = await fetch(`${BASE_URL}/api/v1/auth/refresh`, { method: 'POST', credentials: 'include' });
+      const refreshHeaders: Record<string, string> = {};
+      if (csrfToken) refreshHeaders['X-CSRF-Token'] = csrfToken;
+      const refreshRes = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: refreshHeaders,
+        credentials: 'include',
+      });
       if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        if (refreshData?.access_token) {
+          accessToken = refreshData.access_token;
+          try { localStorage.setItem('aeris_access_token', refreshData.access_token); } catch (_) {}
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
         // Retry the original request
         res = await fetch(url, {
           ...options,
@@ -108,12 +139,28 @@ export async function apiRequest<T = any>(
 
 export const authApi = {
   getCsrf: () => fetchCsrfToken(),
-  login: (username: string, password: string) =>
-    apiRequest('/api/v1/auth/login', {
+  login: async (username: string, password: string) => {
+    const data = await apiRequest('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
-    }),
-  logout: () => apiRequest('/api/v1/auth/logout', { method: 'POST' }),
+    });
+    if (data?.access_token) {
+      accessToken = data.access_token;
+      try { localStorage.setItem('aeris_access_token', data.access_token); } catch (_) {}
+    }
+    if (data?.csrf_token) {
+      csrfToken = data.csrf_token;
+    }
+    return data;
+  },
+  logout: async () => {
+    try {
+      await apiRequest('/api/v1/auth/logout', { method: 'POST' });
+    } finally {
+      accessToken = null;
+      try { localStorage.removeItem('aeris_access_token'); } catch (_) {}
+    }
+  },
   me: () => apiRequest('/api/v1/auth/me'),
 };
 

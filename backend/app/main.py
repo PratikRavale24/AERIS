@@ -45,6 +45,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Verify egress is blocked (air-gap check)
     _verify_egress_blocked()
 
+    # Verify and initialize database schema and demo users
+    try:
+        from app.db.models import Base
+        from app.db.session import get_engine, get_session_factory
+        from app.db.seed import create_demo_users
+        engine = get_engine()
+        Base.metadata.create_all(bind=engine)
+        factory = get_session_factory()
+        with factory() as session:
+            create_demo_users(session)
+        logger.info("Database schema and demo users verified at startup")
+    except Exception as e:
+        logger.warning(f"Database auto-init warning: {e}")
+
     yield
 
     logger.info(f"{APP_NAME} shutting down")
@@ -88,16 +102,29 @@ def create_app() -> FastAPI:
     )
 
     from fastapi.middleware.cors import CORSMiddleware
+    import re
     
-    # Allow Vercel frontend to access the Render backend
-    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    # Configure allowed CORS origins
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://aeris-alpha.vercel.app",
+    ]
+    frontend_env = os.environ.get("FRONTEND_URL")
+    if frontend_env:
+        for u in frontend_env.split(","):
+            u_clean = u.strip().rstrip("/")
+            if u_clean and u_clean not in allowed_origins:
+                allowed_origins.append(u_clean)
     
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=[frontend_url],
+        allow_origins=allowed_origins,
+        allow_origin_regex=r"https://.*\.vercel\.app",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["*"],
     )
 
     application.add_middleware(
@@ -119,17 +146,25 @@ def create_app() -> FastAPI:
             "magnetometer=(), microphone=(), payment=(), usb=()"
         )
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        # Must be cross-origin so cross-origin frontend (Vercel) can read API responses
+        response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
         return response
 
     @application.middleware("http")
     async def csrf_middleware(request: Request, call_next: Any) -> Response:
         """Validate CSRF token on state-changing requests."""
         if request.method not in SAFE_METHODS:
-            path = request.url.path
+            path = re.sub(r"/+", "/", request.url.path)
             if path not in CSRF_EXEMPT_PATHS:
                 csrf_header = request.headers.get("X-CSRF-Token", "")
                 csrf_cookie = request.cookies.get("__Host-csrf_token", "")
+                
+                origin = request.headers.get("origin")
+                cors_headers = {}
+                if origin:
+                    cors_headers["Access-Control-Allow-Origin"] = origin
+                    cors_headers["Access-Control-Allow-Credentials"] = "true"
+
                 if not csrf_header or not csrf_cookie:
                     return JSONResponse(
                         status_code=403,
@@ -137,6 +172,7 @@ def create_app() -> FastAPI:
                             "error": "csrf_required",
                             "message": "CSRF token required for state-changing requests",
                         },
+                        headers=cors_headers,
                     )
                 if not constant_time_compare(csrf_header, csrf_cookie):
                     return JSONResponse(
@@ -145,6 +181,7 @@ def create_app() -> FastAPI:
                             "error": "csrf_invalid",
                             "message": "Invalid CSRF token",
                         },
+                        headers=cors_headers,
                     )
         return await call_next(request)
 
@@ -181,14 +218,20 @@ def create_app() -> FastAPI:
             exc_info=exc,
             extra={"extra_data": {"request_id": request_id}},
         )
-        # Never expose stack traces to clients
+        origin = request.headers.get("origin")
+        headers = {}
+        if origin:
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+        # Never expose raw stack traces to clients, but provide clean error info
         return JSONResponse(
             status_code=500,
             content={
                 "error": "internal_server_error",
-                "message": "An unexpected error occurred.",
+                "message": f"Server error ({type(exc).__name__}). Please check server logs.",
                 "request_id": request_id,
             },
+            headers=headers,
         )
 
     return application
