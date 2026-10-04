@@ -110,7 +110,7 @@ def create_app() -> FastAPI:
             "Predictions are not airworthiness or release-to-service decisions "
             "and are not validated for operational aircraft."
         ),
-        version="0.1.2",
+        version="0.1.3",
         docs_url="/api/docs" if settings.app_env == "development" else None,
         redoc_url="/api/redoc" if settings.app_env == "development" else None,
         openapi_url="/api/openapi.json" if settings.app_env == "development" else None,
